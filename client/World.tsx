@@ -946,8 +946,8 @@ function OnsenYard({ reducedMotion, lanternLit }: { reducedMotion: boolean; lant
     <Water x={ONSEN.x} z={ONSEN.z} w={ONSEN.w} d={ONSEN.d} basin reducedMotion={reducedMotion} />
     {[-1, 1].map(side => <Box key={side} at={[ONSEN.x + side * ONSEN.w / 2, -.3, ONSEN.z]} size={[.3, 1, ONSEN.d + .3]} material={materials.stone} />)}
     <Box at={[ONSEN.x, -.3, ONSEN.z + ONSEN.d / 2]} size={[ONSEN.w, 1, .3]} material={materials.stone} />
-    {[-1, 1].map(side => <Box key={side} at={[ONSEN.x + side * (1.6 + (ONSEN.w - 3.2) / 4), -.3, ONSEN.z - ONSEN.d / 2]} size={[(ONSEN.w - 3.2) / 2, 1, .3]} material={materials.stone} />)}
-    {[0, 1, 2, 3].map(i => <Box key={i} at={[ONSEN.x, -.15 - i * .18, ONSEN.z - ONSEN.d / 2 + .3 + i * .35]} size={[2.6, .18, .4]} material={materials.stone} />)}
+    {[-1, 1].map(side => <Box key={side} at={[ONSEN.x + side * (2.1 + (ONSEN.w - 4.2) / 4), -.3, ONSEN.z - ONSEN.d / 2]} size={[(ONSEN.w - 4.2) / 2, 1, .3]} material={materials.stone} />)}
+    {[0, 1, 2, 3].map(i => <Box key={i} at={[ONSEN.x, -.15 - i * .18, ONSEN.z - ONSEN.d / 2 + .3 + i * .35]} size={[3.4, .18, .4]} material={materials.stone} />)}
     {[-2, 0, 2].map(dx => <Steam key={dx} x={ONSEN.x + dx} z={ONSEN.z} reducedMotion={reducedMotion} />)}
     <Sign title="노천탕" subtitle="OPEN-AIR BATH" at={[ONSEN.x + 2.6, 2.5, ONSEN.entry[1] - .4]} yaw={faceYaw(fx, fz, ONSEN.x + 2.6, ONSEN.entry[1] - .4)} near={16} hideClose={5} />
     <Sign title="노천탕으로 가는 대나무길" subtitle="BAMBOO PATH" at={signOnPath} yaw={-Math.PI / 2} near={26} hideClose={4.5} />

@@ -184,42 +184,27 @@ for (const side of [-1, 1]) { COLLIDERS.push({ x: side * 5.5, z: 26, w: .5, d: .
   COLLIDERS.push({ x: x - 4, z: z - d / 2, w: w - 8, d: .35, height: .55 });
   COLLIDERS.push({ x: -24, z: 20, w: 1.7, d: 1.7, height: .9 });
 }
-// Onsen clearing: west gap for bamboo path + wide south opening to bath stairs.
+// Onsen clearing: west gap centered on the bamboo path + wide south opening to bath stairs.
 {
   const { center: [x, z], size: [w, d] } = ZONES.onsen;
   const southOpen = 9;
-  const westOpen = 6; // keep z ≈ 16 path clear from the courtyard
+  const pathZ = ONSEN_PATH.to[1];
+  // Keep the east–west path (z≈16) and the north apron to the stairs fully clear.
+  const gapLo = pathZ - 2.6, gapHi = pathZ + 4.2;
+  const westX = x - w / 2, zoneLo = z - d / 2, zoneHi = z + d / 2;
   COLLIDERS.push({ x: x + w / 2, z, w: .35, d, height: .55 });
-  COLLIDERS.push({ x, z: z + d / 2, w, d: .35, height: .55 });
-  COLLIDERS.push({ x: x - w / 2, z: z - (d + westOpen) / 4, w: .35, d: (d - westOpen) / 2, height: .55 });
-  COLLIDERS.push({ x: x - w / 2, z: z + (d + westOpen) / 4, w: .35, d: (d - westOpen) / 2, height: .55 });
-  COLLIDERS.push({ x: x - (w + southOpen) / 4, z: z - d / 2, w: (w - southOpen) / 2, d: .35, height: .55 });
-  COLLIDERS.push({ x: x + (w + southOpen) / 4, z: z - d / 2, w: (w - southOpen) / 2, d: .35, height: .55 });
+  COLLIDERS.push({ x, z: zoneHi, w, d: .35, height: .55 });
+  if (gapLo > zoneLo + .4) COLLIDERS.push({ x: westX, z: (zoneLo + gapLo) / 2, w: .35, d: gapLo - zoneLo, height: .55 });
+  if (zoneHi > gapHi + .4) COLLIDERS.push({ x: westX, z: (gapHi + zoneHi) / 2, w: .35, d: zoneHi - gapHi, height: .55 });
+  COLLIDERS.push({ x: x - (w + southOpen) / 4, z: zoneLo, w: (w - southOpen) / 2, d: .35, height: .55 });
+  COLLIDERS.push({ x: x + (w + southOpen) / 4, z: zoneLo, w: (w - southOpen) / 2, d: .35, height: .55 });
   COLLIDERS.push({ x: ONSEN.x - ONSEN.w / 2, z: ONSEN.z, w: .3, d: ONSEN.d, height: .35 });
   COLLIDERS.push({ x: ONSEN.x + ONSEN.w / 2, z: ONSEN.z, w: .3, d: ONSEN.d, height: .35 });
   COLLIDERS.push({ x: ONSEN.x, z: ONSEN.z + ONSEN.d / 2, w: ONSEN.w, d: .3, height: .35 });
-  const side = (ONSEN.w - 3.2) / 2;
-  for (const sign of [-1, 1]) COLLIDERS.push({ x: ONSEN.x + sign * (1.6 + side / 2), z: ONSEN.z - ONSEN.d / 2, w: side, d: .3, height: .35 });
-}
-
-// Bamboo path rails — center lane only; leave a north gap at the path end for the stairs.
-{
-  const [fx, fz] = ONSEN_PATH.from, [tx] = ONSEN_PATH.to;
-  const midX = (fx + tx) / 2;
-  const len = Math.abs(tx - fx) + .6;
-  const rail = .5;
-  const railZ = ONSEN_PATH.walkHalf + .34 + rail / 2;
-  // South curb runs the full path.
-  COLLIDERS.push({ x: midX, z: fz - railZ, w: len, d: rail, height: 1.15 });
-  // North curb stops before the apron so you can turn toward the bath stairs.
-  const northEnd = tx - 3.2;
-  const northLen = Math.max(2, northEnd - fx);
-  COLLIDERS.push({ x: fx + northLen / 2, z: fz + railZ, w: northLen, d: rail, height: 1.15 });
-  // Apron side rails — start north of the path, leave the center open to the stairs.
-  const apronLen = 3.0, apronMidZ = fz + 1.55 + apronLen / 2;
-  const railX = ONSEN_PATH.walkHalf + .55 + rail / 2;
-  COLLIDERS.push({ x: ONSEN.x + railX, z: apronMidZ, w: rail, d: apronLen, height: 1.15 });
-  COLLIDERS.push({ x: ONSEN.x - railX, z: apronMidZ, w: rail, d: apronLen, height: 1.15 });
+  // South bath rim — leave a wide stair mouth so the path apron feeds straight in.
+  const stairW = 4.2;
+  const side = (ONSEN.w - stairW) / 2;
+  for (const sign of [-1, 1]) COLLIDERS.push({ x: ONSEN.x + sign * (stairW / 2 + side / 2), z: ONSEN.z - ONSEN.d / 2, w: side, d: .3, height: .35 });
 }
 
 // Courtyard snack stall — south of onsen approach (yaw 0 → counter along X)
