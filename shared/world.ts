@@ -71,6 +71,7 @@ export type ClientMessage =
   | { type: 'join'; nickname: string; appearance: Appearance; token?: string }
   | { type: 'move'; dx: number; dz: number; yaw: number }
   | { type: 'travel'; zone: ZoneId }
+  | { type: 'enter-onsen-path' }
   | { type: 'reserve'; slot: string }
   | { type: 'join-yoga' }
   | { type: 'enter-bath'; bath: BathId }

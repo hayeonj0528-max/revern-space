@@ -43,6 +43,19 @@ export function onsenPathYaw() {
   return Math.atan2(bx - ax, bz - az);
 }
 
+/** Waypoints for the guided bamboo-path walk into the bath. */
+export function onsenPathWaypoints(): [number, number][] {
+  const [fx, fz] = ONSEN_PATH.from, [tx, tz] = ONSEN_PATH.to;
+  return [
+    [fx, fz],
+    [fx + (tx - fx) * .35, fz],
+    [fx + (tx - fx) * .7, fz],
+    [tx, tz],
+    [ONSEN.entry[0], ONSEN.entry[1]],
+    [ONSEN.x, ONSEN.z - 1.2]
+  ];
+}
+
 export function onOnsenWalk(x: number, z: number) {
   const { from, to, walkHalf } = ONSEN_PATH;
   if (distToSegment(x, z, from[0], from[1], to[0], to[1]) < walkHalf) return true;

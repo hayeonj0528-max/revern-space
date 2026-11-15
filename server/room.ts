@@ -1,10 +1,11 @@
 import { randomUUID } from 'node:crypto';
-import { SLOTS, ZONES, YOGA_INTERACTION_RADIUS, nearbyYogaMat, zoneAt, isTea, type Appearance, type ClientMessage, type Player, type Snapshot, type ZoneId } from '../shared/world.js';
+import { SLOTS, ZONES, YOGA_INTERACTION_RADIUS, nearbyYogaMat, zoneAt, isTea, SPEED, type Appearance, type ClientMessage, type Player, type Snapshot, type ZoneId } from '../shared/world.js';
 import { SPA_BATHS, SAUNA, bathAt } from '../shared/spa.js';
-import { ONSEN, onsenAt } from '../shared/onsen.js';
-import { stepLocomotion } from '../shared/locomotion.js';
+import { ONSEN, onsenAt, onsenPathWaypoints, onsenPathYaw } from '../shared/onsen.js';
+import { movementYaw, stepLocomotion } from '../shared/locomotion.js';
 
-type Session = { player: Player; token: string; dx: number; dz: number; inputAt: number; disconnectedAt: number | null; send: ((data: object) => void) | null };
+type Guide = { points: [number, number][]; i: number };
+type Session = { player: Player; token: string; dx: number; dz: number; inputAt: number; disconnectedAt: number | null; send: ((data: object) => void) | null; guide: Guide | null };
 export class Room {
   sessions = new Map<string, Session>();
   occupancy: Record<string, string> = {};
@@ -18,7 +19,7 @@ export class Room {
       const session = [...this.sessions.values()].find(s => s.token === message.token);
       if (session) {
         if (session.player.connected) throw new Error('이 세션은 다른 연결에서 사용 중입니다.');
-        session.send = send; session.player.connected = true; session.disconnectedAt = null;
+        session.send = send; session.player.connected = true; session.disconnectedAt = null; session.guide = null;
         return session;
       }
     }
@@ -28,7 +29,7 @@ export class Room {
     const a = message.appearance;
     if (!a || !['skin', 'hair', 'outfit'].every(k => Number.isInteger(a[k as keyof Appearance]) && a[k as keyof Appearance] >= 0 && a[k as keyof Appearance] < (k === 'outfit' ? 4 : 3))) throw new Error('캐릭터 선택을 확인해 주세요.');
     const player: Player = { id: randomUUID(), nickname, appearance: { skin: a.skin, hair: a.hair, outfit: a.outfit }, x: ZONES.courtyard.spawn[0], z: ZONES.courtyard.spawn[1], yaw: ZONES.courtyard.yaw, zone: 'courtyard', activity: 'idle', towel: false, connected: true, slot: null, actionUntil: 0, drink: null, marshmallow: 'none' };
-    const session: Session = { player, token: randomUUID(), dx: 0, dz: 0, inputAt: now, disconnectedAt: null, send };
+    const session: Session = { player, token: randomUUID(), dx: 0, dz: 0, inputAt: now, disconnectedAt: null, send, guide: null };
     this.sessions.set(player.id, session);
     return session;
   }
@@ -39,7 +40,7 @@ export class Room {
       delete this.occupancy[slot.id];
       [s.player.x, s.player.z] = slot.exit;
     }
-    s.player.slot = null; s.player.activity = 'idle'; s.player.drink = null; s.player.marshmallow = 'none'; s.player.actionUntil = 0; s.dx = 0; s.dz = 0;
+    s.player.slot = null; s.player.activity = 'idle'; s.player.drink = null; s.player.marshmallow = 'none'; s.player.actionUntil = 0; s.dx = 0; s.dz = 0; s.guide = null;
   }
   handle(id: string, data: ClientMessage, now = Date.now()) {
     const s = this.sessions.get(id); if (!s?.player.connected) return;
@@ -47,18 +48,31 @@ export class Room {
     switch (data.type) {
       case 'move': {
         if (![data.dx, data.dz, data.yaw].every(v => typeof v === 'number' && Number.isFinite(v)) || Math.abs(data.dx) > 1 || Math.abs(data.dz) > 1 || Math.abs(data.yaw) > Math.PI * 4) return this.error(s, '올바르지 않은 이동 요청입니다.');
-        if (p.slot || p.actionUntil > now) return;
+        if (p.slot || p.actionUntil > now || s.guide) return;
         const length = Math.max(1, Math.hypot(data.dx, data.dz)); s.dx = data.dx / length; s.dz = data.dz / length;
         s.inputAt = now; break;
       }
       case 'travel': {
         if (!Object.hasOwn(ZONES, data.zone)) return this.error(s, '존재하지 않는 공간입니다.');
-        this.release(s); const zone = ZONES[data.zone as ZoneId]; [p.x, p.z] = zone.spawn; p.yaw = zone.yaw; p.zone = data.zone;
+        this.release(s); s.guide = null; const zone = ZONES[data.zone as ZoneId]; [p.x, p.z] = zone.spawn; p.yaw = zone.yaw; p.zone = data.zone; p.activity = 'idle';
+        break;
+      }
+      case 'enter-onsen-path': {
+        if (p.actionUntil > now) return;
+        this.release(s);
+        const points = onsenPathWaypoints();
+        [p.x, p.z] = points[0]!;
+        p.yaw = onsenPathYaw();
+        p.zone = 'onsen';
+        p.activity = 'walking';
+        p.towel = false;
+        s.dx = s.dz = 0;
+        s.guide = { points, i: 1 };
         break;
       }
       case 'enter-bath': {
         if (data.bath === 'onsen') {
-          if (p.zone !== 'onsen' || p.slot || p.actionUntil > now || Math.hypot(p.x - ONSEN.entry[0], p.z - ONSEN.entry[1]) > 5) return this.error(s, '노천탕 계단 가까이로 걸어가 주세요.');
+          if (s.guide || p.zone !== 'onsen' || p.slot || p.actionUntil > now || Math.hypot(p.x - ONSEN.entry[0], p.z - ONSEN.entry[1]) > 5) return this.error(s, '노천탕 계단 가까이로 걸어가 주세요.');
           p.x = ONSEN.x; p.z = ONSEN.z - 1.2; p.yaw = 0; p.activity = 'bathing'; s.dx = s.dz = 0;
           break;
         }
@@ -68,8 +82,8 @@ export class Room {
         break;
       }
       case 'exit-bath': {
-        if (onsenAt(p.x, p.z)) {
-          [p.x, p.z] = ONSEN.entry; p.yaw = Math.PI; p.activity = 'idle'; p.actionUntil = 0; p.drink = null; s.dx = s.dz = 0;
+        if (onsenAt(p.x, p.z) || (p.activity === 'bathing' && p.zone === 'onsen')) {
+          s.guide = null; [p.x, p.z] = ONSEN.entry; p.yaw = Math.PI; p.activity = 'idle'; p.actionUntil = 0; p.drink = null; s.dx = s.dz = 0;
           break;
         }
         const bath = bathAt(p.x, p.z); if (!bath) return;
@@ -142,7 +156,7 @@ export class Room {
   }
   disconnect(id: string, now = Date.now()) {
     const s = this.sessions.get(id); if (!s) return;
-    s.player.connected = false; s.send = null; s.disconnectedAt = now; s.dx = s.dz = 0;
+    s.player.connected = false; s.send = null; s.disconnectedAt = now; s.dx = s.dz = 0; s.guide = null;
     if (s.player.activity === 'walking') s.player.activity = 'idle';
   }
   remove(id: string) { const s = this.sessions.get(id); if (!s) return; if (s.player.slot) delete this.occupancy[s.player.slot]; this.sessions.delete(id); }
@@ -157,7 +171,26 @@ export class Room {
         if (p.slot) {
           const kind = SLOTS.find(slot => slot.id === p.slot)?.kind;
           p.activity = kind === 'sauna-bench' ? 'sauna' : kind === 'tube' || kind === 'hammock' ? 'lying' : kind === 'mat' ? 'yoga' : 'sitting';
-        } else p.activity = 'idle';
+        } else if (!s.guide) p.activity = 'idle';
+      }
+      if (s.guide) {
+        const g = s.guide;
+        const target = g.points[g.i];
+        if (!target) { s.guide = null; continue; }
+        const dx = target[0] - p.x, dz = target[1] - p.z, dist = Math.hypot(dx, dz);
+        if (dist < .4) {
+          g.i += 1;
+          if (g.i >= g.points.length) {
+            p.x = ONSEN.x; p.z = ONSEN.z - 1.2; p.yaw = 0; p.activity = 'bathing'; p.zone = 'onsen';
+            s.guide = null; s.dx = s.dz = 0;
+          }
+          continue;
+        }
+        const step = Math.min(dist, SPEED * 1.35 * dt);
+        p.x += dx / dist * step; p.z += dz / dist * step;
+        p.yaw = movementYaw(dx / dist, dz / dist);
+        p.activity = 'walking'; p.zone = zoneAt(p.x, p.z);
+        continue;
       }
       if (p.slot || p.actionUntil > now) continue;
       if (now - s.inputAt > 300) s.dx = s.dz = 0;

@@ -7,6 +7,7 @@ import { angleDelta, movementYaw, stepLocomotion } from '../shared/locomotion';
 import { network, useSpace } from './network';
 import { Avatar } from './Avatar';
 import { motion, touchInput } from './controls';
+import { guide as pathGuide } from './guide';
 import { World } from './World';
 import type { DayCycle } from './dayCycle';
 
@@ -78,7 +79,16 @@ function Controller({ firstPerson, reducedMotion, joined, day, onReady, onStats 
     const uiOpen = uiOpenCached.current;
     let dx = 0, dz = 0;
     motion.walking = false;
-    if (joined && p && !p.slot && !uiOpen && state.connection === 'connected' && !['drinking', 'pouring'].includes(p.activity)) {
+    if (pathGuide.active && p) {
+      if (p.activity === 'bathing' || (p.activity !== 'walking' && p.zone !== 'onsen')) pathGuide.active = false;
+      motion.position.set(p.x, groundHeightAt(p.x, p.z), p.z);
+      motion.facingYaw = p.yaw; motion.walking = p.activity === 'walking';
+      correction.current.set(0, 0); steering.current.active = false;
+      if (!looking.current && performance.now() >= manualLookUntil.current) {
+        const turn = angleDelta(motion.yaw, motion.facingYaw);
+        motion.yaw += turn * (reducedMotion ? 1 : 1 - Math.exp(-dt * 10));
+      }
+    } else if (joined && p && !p.slot && !uiOpen && state.connection === 'connected' && !['drinking', 'pouring'].includes(p.activity)) {
       const forward = (keys.current.has('KeyW') || keys.current.has('ArrowUp') ? 1 : 0) - (keys.current.has('KeyS') || keys.current.has('ArrowDown') ? 1 : 0) - touchInput.z;
       const side = (keys.current.has('KeyD') || keys.current.has('ArrowRight') ? 1 : 0) - (keys.current.has('KeyA') || keys.current.has('ArrowLeft') ? 1 : 0) + touchInput.x;
       // Freeze the input basis for a held gesture: camera following must not

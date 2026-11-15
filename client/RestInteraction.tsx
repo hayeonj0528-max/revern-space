@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { MEDITATION, SLOTS, TEA_BOOKS, TEA_LIBRARY, TEA_QUOTES, TEAS, ZONES, type TeaId, teaById } from '../shared/world';
 import { SHOP } from '../shared/shop';
 import { audio } from './audio';
+import { guide } from './guide';
 import { FLOATING_MUSIC } from './music';
 import { network, useSpace } from './network';
 import { HudMenu, RoomHud } from './RoomHud';
@@ -19,7 +20,10 @@ export function RestInteraction({ meditation, onOpenMap, musicError, onEnableMus
   const zone = self.zone, connected = connection === 'connected';
   if (zone === 'courtyard') {
     if (Math.hypot(self.x - SHOP.x, self.z - SHOP.z) <= SHOP.reach) return null;
-    return <RoomHud label="숲의 중정 체험" className="courtyard-hud"><div className="hud-main"><span className="hud-status">천천히 둘러보세요 · 동쪽 대나무길을 따라가면 노천탕이에요</span><button className="secondary" onClick={onOpenMap}>공간 둘러보기</button></div></RoomHud>;
+    return <RoomHud label="숲의 중정 체험" className="courtyard-hud"><div className="hud-main"><span className="hud-status">천천히 둘러보세요 · 버튼으로 대나무길을 따라 노천탕에 들어갈 수 있어요</span>
+      <button className="primary" disabled={!connected} onClick={event => { guide.active = true; network.send({ type: 'enter-onsen-path' }); event.currentTarget.blur(); }}>노천탕으로 가기</button>
+      <button className="secondary" onClick={onOpenMap}>공간 둘러보기</button>
+    </div></RoomHud>;
   }
   if (zone !== 'floating' && zone !== 'tea') return null;
   const slots = SLOTS.filter(slot => slot.zone === zone);

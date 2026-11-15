@@ -247,6 +247,17 @@ test('onsen bath entry, depth and exit work like the spa baths', () => {
   room.handle(p.id, { type: 'exit-bath' });
   assert.deepEqual([p.x, p.z], ONSEN.entry); assert.equal(p.activity, 'idle'); assert.equal(groundHeightAt(p.x, p.z), 0);
 });
+test('enter-onsen-path walks the bamboo path then enters the bath', () => {
+  const room = new Room(), a = join(room), p = a.player;
+  room.handle(p.id, { type: 'enter-onsen-path' });
+  assert.equal(p.zone, 'onsen');
+  assert.ok(Math.hypot(p.x - 10.5, p.z - 16) < .01);
+  assert.ok(p.activity === 'walking');
+  for (let steps = 0; steps < 400 && p.activity === 'walking'; steps++) room.tick(0.05, 1000 + steps * 50);
+  assert.equal(p.activity, 'bathing'); assert.ok(onsenAt(p.x, p.z));
+  room.handle(p.id, { type: 'exit-bath' });
+  assert.equal(p.activity, 'idle'); assert.deepEqual([p.x, p.z], ONSEN.entry);
+});
 test('onsen hammocks can be reserved for lying and release to a walkable exit', () => {
   const room = new Room(), a = join(room), b = join(room);
   const hammock = SLOTS.find(s => s.id === 'hammock-0')!;

@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { SLOTS } from '../shared/world';
 import { nearOnsenEntry, onsenAt } from '../shared/onsen';
+import { guide } from './guide';
 import { network, useSpace } from './network';
 import { RoomHud } from './RoomHud';
 
@@ -31,13 +32,20 @@ export function OnsenInteraction() {
   if (onHammock) return <RoomHud label="그물침대 휴식 중" className="onsen-hud">
     <div className="hud-main"><span className="hud-status">대나무 사이, 그물 위에서 쉬는 중</span><button className="primary" disabled={!connected} aria-keyshortcuts="E" onClick={event => { network.send({ type: 'release' }); event.currentTarget.blur(); }}>일어나기<kbd aria-hidden="true">E</kbd></button></div>
   </RoomHud>;
-  if (bath) return <RoomHud label="노천탕 이용 중" className="onsen-hud">
-    <div className="hud-main"><span className="hud-status">따뜻한 물에 몸을 맡기는 중</span><button className="primary" disabled={!connected} aria-keyshortcuts="E" onClick={event => { network.send({ type: 'exit-bath' }); event.currentTarget.blur(); }}>탕에서 나오기<kbd aria-hidden="true">E</kbd></button></div>
+  if (bath) {
+    guide.active = false;
+    return <RoomHud label="노천탕 이용 중" className="onsen-hud">
+      <div className="hud-main"><span className="hud-status">따뜻한 물에 몸을 맡기는 중</span><button className="primary" disabled={!connected} aria-keyshortcuts="E" onClick={event => { network.send({ type: 'exit-bath' }); event.currentTarget.blur(); }}>탕에서 나오기<kbd aria-hidden="true">E</kbd></button></div>
+    </RoomHud>;
+  }
+  if (guide.active) return <RoomHud label="노천탕으로 가는 중" className="onsen-hud">
+    <div className="hud-main"><span className="hud-status">대나무길을 따라 천천히 걸어가고 있어요</span></div>
   </RoomHud>;
   return <RoomHud label="노천탕 체험" className="onsen-hud">
-    <div className="hud-main"><span className="hud-status">{nearHammock ? '빈 그물침대가 가까워요' : entry ? '노천탕 계단 앞' : '앞으로만 걸으면 노천탕이에요'}</span>
+    <div className="hud-main"><span className="hud-status">{nearHammock ? '빈 그물침대가 가까워요' : entry ? '노천탕 계단 앞' : '대나무길을 따라 탕으로 들어가요'}</span>
       {nearHammock && <button className="primary" disabled={!connected} aria-keyshortcuts="E" onClick={event => { network.send({ type: 'reserve', slot: nearHammock.id }); event.currentTarget.blur(); }}>그물침대에 눕기<kbd aria-hidden="true">E</kbd></button>}
       {!nearHammock && entry && <button className="primary" disabled={!connected} aria-keyshortcuts="E" onClick={event => { network.send({ type: 'enter-bath', bath: 'onsen' }); event.currentTarget.blur(); }}>노천탕 들어가기<kbd aria-hidden="true">E</kbd></button>}
+      {!nearHammock && !entry && <button className="primary" disabled={!connected} onClick={event => { guide.active = true; network.send({ type: 'enter-onsen-path' }); event.currentTarget.blur(); }}>노천탕으로 가기</button>}
     </div>
   </RoomHud>;
 }
