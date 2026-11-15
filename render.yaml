@@ -1,0 +1,19 @@
+# Optional Render Blueprint — review in the Render dashboard before applying.
+# Single web service: static client + WebSocket room (do not scale to >1 instance).
+services:
+  - type: web
+    name: revern-space
+    runtime: node
+    plan: free
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    envVars:
+      - key: HOST
+        value: 0.0.0.0
+      - key: MAX_CLIENTS
+        value: "12"
+      - key: RECONNECT_GRACE_MS
+        value: "15000"
+      # Leave ALLOWED_ORIGINS empty for same-origin. Set only if the client is on another host.
+      - key: ALLOWED_ORIGINS
+        value: ""
