@@ -202,18 +202,22 @@ for (const side of [-1, 1]) { COLLIDERS.push({ x: side * 5.5, z: 26, w: .5, d: .
   for (const sign of [-1, 1]) COLLIDERS.push({ x: ONSEN.x + sign * (1.6 + side / 2), z: ONSEN.z - ONSEN.d / 2, w: side, d: .3, height: .35 });
 }
 
-// Bamboo path rails — only the center lane is walkable (same turn-to-walk as everywhere).
+// Bamboo path rails — center lane only; leave a north gap at the path end for the stairs.
 {
   const [fx, fz] = ONSEN_PATH.from, [tx] = ONSEN_PATH.to;
   const midX = (fx + tx) / 2;
   const len = Math.abs(tx - fx) + .6;
   const rail = .5;
   const railZ = ONSEN_PATH.walkHalf + .34 + rail / 2;
-  COLLIDERS.push({ x: midX, z: fz + railZ, w: len, d: rail, height: 1.15 });
+  // South curb runs the full path.
   COLLIDERS.push({ x: midX, z: fz - railZ, w: len, d: rail, height: 1.15 });
-  // Apron rails up to the bath stairs — keep the approach centered.
-  const apronLen = 4.2, apronMidZ = fz + apronLen / 2 + .15;
-  const railX = ONSEN_PATH.walkHalf + .34 + rail / 2;
+  // North curb stops before the apron so you can turn toward the bath stairs.
+  const northEnd = tx - 3.2;
+  const northLen = Math.max(2, northEnd - fx);
+  COLLIDERS.push({ x: fx + northLen / 2, z: fz + railZ, w: northLen, d: rail, height: 1.15 });
+  // Apron side rails — start north of the path, leave the center open to the stairs.
+  const apronLen = 3.0, apronMidZ = fz + 1.55 + apronLen / 2;
+  const railX = ONSEN_PATH.walkHalf + .55 + rail / 2;
   COLLIDERS.push({ x: ONSEN.x + railX, z: apronMidZ, w: rail, d: apronLen, height: 1.15 });
   COLLIDERS.push({ x: ONSEN.x - railX, z: apronMidZ, w: rail, d: apronLen, height: 1.15 });
 }
