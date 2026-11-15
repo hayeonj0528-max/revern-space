@@ -195,7 +195,7 @@ function Pavilion({ id, lit = 0, reducedMotion = false }: { id: Exclude<ZoneId, 
     <Sign title={r.name} subtitle={r.english} at={signAt} yaw={signYaw} dark={dark} />
     {dark && <Box at={[x, 5.18, z]} size={[w, .16, d]} material={materials.darkWood} />}
     {cozy && wallWashes.map(s => <WallWash key={`wash-${s.key}`} at={s.at} yaw={s.yaw} width={s.width} lit={softLit} />)}
-    {cozy && <>
+    {cozy && softLit > .05 && <>
       <CoveStrip at={[x, beam - .22, z - d / 2 + .2]} size={[w * .88, .04, .12]} lit={softLit} />
       <CoveStrip at={[x, beam - .22, z + d / 2 - .2]} size={[w * .88, .04, .12]} lit={softLit} />
       <CoveStrip at={[x - w / 2 + .2, beam - .22, z]} size={[.12, .04, d * .88]} lit={softLit} />
@@ -204,8 +204,7 @@ function Pavilion({ id, lit = 0, reducedMotion = false }: { id: Exclude<ZoneId, 
       <pointLight position={[x, 2.2, z]} color={bright ? '#ffe9c4' : '#ead9bc'} intensity={(bright ? 9 : 4.5) * softLit} distance={Math.max(w, d) * (bright ? .75 : .55)} decay={1.5} />
       {bright && <>
         <pointLight position={[alongX ? x - 5 : x, 2.6, alongX ? z : z - 4]} color="#fff0d8" intensity={7 * softLit} distance={11} decay={1.45} />
-        <pointLight position={[alongX ? x + 5 : x, 2.6, alongX ? z : z + 4]} color="#fff0d8" intensity={7 * softLit} distance={11} decay={1.45} />
-        {postTs.map(t => {
+        {postTs.slice(0, 2).map(t => {
           const px = alongX ? x + w * t : x + w / 2 * openSide;
           const pz = alongX ? z + d / 2 * openSide : z + d * t;
           const insetX = alongX ? 0 : -openSide * .5;
@@ -222,8 +221,7 @@ function Pavilion({ id, lit = 0, reducedMotion = false }: { id: Exclude<ZoneId, 
       <CoveStrip at={[x, beam - .22, z - d / 2 + .25]} size={[w * .82, .04, .1]} lit={.7} />
       <CoveStrip at={[x, beam - .22, z + d / 2 - .25]} size={[w * .82, .04, .1]} lit={.7} />
       <pointLight position={[x, beam - 1.4, z]} color="#f2d9a8" intensity={11} distance={22} decay={1.45} />
-      <pointLight position={[x, 2.4, z - 4]} color="#e8c890" intensity={5.5} distance={14} decay={1.5} />
-      <pointLight position={[x, 2.4, z + 4]} color="#e8c890" intensity={5.5} distance={14} decay={1.5} />
+      <pointLight position={[x, 2.4, z]} color="#e8c890" intensity={6} distance={16} decay={1.5} />
     </>}
   </group>;
 }
@@ -323,12 +321,14 @@ function WallWash({ at, yaw = 0, width = 1.4, lit = .6 }: { at: [number, number,
     <mesh position={[0, .04, .04]}><boxGeometry args={[width * .92, .02, .05]} /><meshStandardMaterial color="#f0e0c4" emissive="#ffd8a8" emissiveIntensity={.55 + lit * .65} roughness={1} toneMapped={false} /></mesh>
   </group>;
 }
-function Lantern({ at, dark = false, lit = 0, phase = 0, reducedMotion = false }: { at: [number, number, number]; dark?: boolean; lit?: number; phase?: number; reducedMotion?: boolean }) {
+function Lantern({ at, dark = false, lit = 0, phase = 0, reducedMotion = false, highQuality = false }: { at: [number, number, number]; dark?: boolean; lit?: number; phase?: number; reducedMotion?: boolean; highQuality?: boolean }) {
   const glow = useRef<THREE.Mesh>(null!);
   const light = useRef<THREE.PointLight>(null!);
   const mat = useRef<THREE.MeshStandardMaterial>(null!);
+  const useLight = highQuality && (dark || lit > .05);
   useFrame(({ clock }) => {
     const amount = dark ? 1 : lit;
+    if (amount < .02 && !dark) return;
     const pulse = reducedMotion || amount < .02 ? 1 : 1 + Math.sin(clock.elapsedTime * 2 + phase) * .06 * amount;
     glow.current.scale.y = (dark ? 1.6 : 1) * pulse;
     if (mat.current) mat.current.emissiveIntensity = dark ? 2.4 : .2 + lit * 1.5;
@@ -338,16 +338,16 @@ function Lantern({ at, dark = false, lit = 0, phase = 0, reducedMotion = false }
     <Box at={[0, .65, 0]} size={[.14, 1.3, .14]} material={materials.darkWood} />
     <Box at={[0, 1.35, 0]} size={[.5, .12, .5]} material={materials.brass} />
     <mesh ref={glow} position={[0, 1.66, 0]} scale={dark ? [.7, 1.6, .7] : [1, 1, 1]}><sphereGeometry args={[.19, 12, 10]} /><meshStandardMaterial ref={mat} color="#f7d897" emissive="#ffb953" emissiveIntensity={dark ? 2.4 : .28} /></mesh>
-    <pointLight ref={light} position={[0, 1.8, 0]} color="#ffc17b" intensity={dark ? 14 : 0} distance={dark ? 11 : 11} decay={1.35} />
+    {useLight && <pointLight ref={light} position={[0, 1.8, 0]} color="#ffc17b" intensity={dark ? 14 : 8 * lit} distance={11} decay={1.35} />}
   </group>;
 }
 /** Courtyard 호롱 — tall timber pole with a warm paper lantern. */
-function HorongPole({ at, lit = 0, phase = 0, reducedMotion = false }: { at: [number, number, number]; lit?: number; phase?: number; reducedMotion?: boolean }) {
+function HorongPole({ at, lit = 0, phase = 0, reducedMotion = false, highQuality = false }: { at: [number, number, number]; lit?: number; phase?: number; reducedMotion?: boolean; highQuality?: boolean }) {
   const shade = useRef<THREE.MeshStandardMaterial>(null!);
   const light = useRef<THREE.PointLight>(null!);
   const amount = Math.max(lit, .28);
   useFrame(({ clock }) => {
-    const flicker = reducedMotion ? 1 : .94 + Math.sin(clock.elapsedTime * 1.8 + phase) * .04;
+    const flicker = reducedMotion || !highQuality ? 1 : .94 + Math.sin(clock.elapsedTime * 1.8 + phase) * .04;
     if (shade.current) shade.current.emissiveIntensity = (.7 + amount * .9) * flicker;
     if (light.current) light.current.intensity = 7.5 * amount * flicker;
   });
@@ -359,13 +359,21 @@ function HorongPole({ at, lit = 0, phase = 0, reducedMotion = false }: { at: [nu
     <mesh position={[.55, 2.15, 0]}><cylinderGeometry args={[.18, .2, .42, 14]} /><meshStandardMaterial ref={shade} color="#f3e2c0" emissive="#ffc878" emissiveIntensity={.7 + amount * .9} roughness={.85} toneMapped={false} /></mesh>
     <mesh position={[.55, 2.38, 0]}><cylinderGeometry args={[.2, .2, .04, 14]} /><meshStandardMaterial color="#6a5640" roughness={.7} /></mesh>
     <mesh position={[.55, 1.93, 0]}><cylinderGeometry args={[.2, .2, .04, 14]} /><meshStandardMaterial color="#6a5640" roughness={.7} /></mesh>
-    <pointLight ref={light} position={[.55, 2.15, 0]} color="#ffd6a0" intensity={7.5 * amount} distance={12} decay={1.45} />
+    {highQuality && <pointLight ref={light} position={[.55, 2.15, 0]} color="#ffd6a0" intensity={7.5 * amount} distance={12} decay={1.45} />}
   </group>;
 }
 function Steam({ x, z, reducedMotion }: { x: number; z: number; reducedMotion: boolean }) {
   const ref = useRef<THREE.Group>(null!);
-  useFrame(({ clock }) => { ref.current.children.forEach((child, i) => { child.position.y = .5 + (reducedMotion ? i * .2 : (clock.elapsedTime * .12 + i * .4) % 1.8); child.position.x = Math.sin(i * 7 + clock.elapsedTime * .2) * .35; (child as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>).material.opacity = .045 * (1 - child.position.y / 2.4); }); });
-  return <group ref={ref} position={[x, 0, z]}>{[0, 1, 2, 3].map(i => <mesh key={i} scale={[.22, .4, .22]}><sphereGeometry args={[1, 10, 8]} /><meshBasicMaterial color="#f8f1d8" transparent opacity={.05} depthWrite={false} /></mesh>)}</group>;
+  const tick = useRef(0);
+  useFrame(({ clock }) => {
+    if (reducedMotion || (++tick.current % 2) !== 0) return;
+    ref.current.children.forEach((child, i) => {
+      child.position.y = .5 + (clock.elapsedTime * .12 + i * .4) % 1.8;
+      child.position.x = Math.sin(i * 7 + clock.elapsedTime * .2) * .35;
+      (child as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>).material.opacity = .045 * (1 - child.position.y / 2.4);
+    });
+  });
+  return <group ref={ref} position={[x, 0, z]}>{[0, 1, 2].map(i => <mesh key={i} scale={[.22, .4, .22]}><sphereGeometry args={[1, 8, 6]} /><meshBasicMaterial color="#f8f1d8" transparent opacity={.05} depthWrite={false} /></mesh>)}</group>;
 }
 function Terrain() {
   const geometry = useMemo(() => {
@@ -445,14 +453,16 @@ function SaunaCabin({ reducedMotion }: { reducedMotion: boolean }) {
     <Box at={[45.78, 3.6, 3]} size={[.2, .2, 4.4]} material={materials.wood} />
   </group>;
 }
-const Forest = memo(function Forest({ reducedMotion }: { reducedMotion: boolean }) {
+const Forest = memo(function Forest({ reducedMotion, highQuality }: { reducedMotion: boolean; highQuality: boolean }) {
   const trunks = useRef<THREE.InstancedMesh>(null!), crowns = useRef<THREE.InstancedMesh>(null!);
   const dummy = useMemo(() => new THREE.Object3D(), []);
   const foliage = useMemo(() => foliageTexture(), []);
+  const crownPlanes = highQuality ? 12 : 6;
   const trees = useMemo(() => {
     const data: { x: number; z: number; h: number; r: number; phase: number }[] = []; let seed = 19;
     const rand = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
-    for (let i = 0; i < 185; i++) { const angle = rand() * Math.PI * 2; const radius = 72 + rand() * 45; data.push({ x: Math.cos(angle) * radius, z: Math.sin(angle) * radius - 5, h: 6 + rand() * 8, r: 2.5 + rand() * 3.2, phase: rand() * 10 }); }
+    const count = highQuality ? 185 : 100;
+    for (let i = 0; i < count; i++) { const angle = rand() * Math.PI * 2; const radius = 72 + rand() * 45; data.push({ x: Math.cos(angle) * radius, z: Math.sin(angle) * radius - 5, h: 6 + rand() * 8, r: 2.5 + rand() * 3.2, phase: rand() * 10 }); }
     [[-20, -17], [20, -18], [-20, 17], [-19, 29], [19, 29], [-25, -20], [25, -20], [-24, 44], [24, 44]].forEach(([x, z]) => data.push({ x, z, h: 7 + rand() * 3, r: 3 + rand(), phase: rand() * 10 }));
     return data.filter(tree => {
       if (tree.x > 44 && tree.x < 72 && tree.z > -18 && tree.z < 18) return false;
@@ -462,30 +472,36 @@ const Forest = memo(function Forest({ reducedMotion }: { reducedMotion: boolean 
       if (Math.hypot(tree.x - SHOP.x, tree.z - SHOP.z) < 8) return false;
       return true;
     });
-  }, []);
+  }, [highQuality]);
   const ready = useRef(false);
   const tick = useRef(0);
   const palette = useMemo(() => ['#e1e7ca', '#bfceaa', '#ccdab4', '#adbc9a'].map(c => new THREE.Color(c)), []);
+  useEffect(() => { ready.current = false; tick.current = 0; }, [trees, crownPlanes]);
   useFrame(({ clock }) => {
-    const swayOn = !reducedMotion;
-    // Crowns are expensive (~2k matrices); init once, then throttle sway.
-    if (ready.current && (!swayOn || (++tick.current % 3) !== 0)) return;
+    const swayOn = highQuality && !reducedMotion;
+    // Crowns are expensive; init once, freeze on mobile, throttle sway on desktop.
+    if (ready.current && (!swayOn || (++tick.current % 4) !== 0)) return;
     trees.forEach((tree, i) => {
       if (!ready.current) {
         dummy.position.set(tree.x, tree.h * .43, tree.z); dummy.scale.set(.25, tree.h * .86, .25); dummy.rotation.set(0, 0, 0); dummy.updateMatrix(); trunks.current.setMatrixAt(i * 3, dummy.matrix);
         for (const side of [-1, 1]) { dummy.position.set(tree.x + side * .55, tree.h * .7, tree.z + side * .25); dummy.scale.set(.13, tree.h * .4, .13); dummy.rotation.set(.18, 0, side * -.5); dummy.updateMatrix(); trunks.current.setMatrixAt(i * 3 + (side === -1 ? 1 : 2), dummy.matrix); }
       }
       const sway = swayOn ? Math.sin(clock.elapsedTime * (.22 + (i % 4) * .045) + tree.phase) * .1 : 0;
-      for (let j = 0; j < 12; j++) {
-        dummy.position.set(tree.x + Math.sin(j * 2.7) * tree.r * .45 + sway, tree.h - (j % 3) * tree.r * .45, tree.z + Math.cos(j * 2.7) * tree.r * .4);
-        dummy.scale.set(tree.r * .9, tree.r * .8, 1); dummy.rotation.set((j % 3 - 1) * .7, tree.phase + j * 1.2, sway * .15); dummy.updateMatrix(); crowns.current.setMatrixAt(i * 12 + j, dummy.matrix);
-        if (!ready.current) crowns.current.setColorAt(i * 12 + j, palette[i % 4]!);
+      for (let j = 0; j < crownPlanes; j++) {
+        const step = highQuality ? 2.7 : 4.2;
+        dummy.position.set(tree.x + Math.sin(j * step) * tree.r * .45 + sway, tree.h - (j % 3) * tree.r * .45, tree.z + Math.cos(j * step) * tree.r * .4);
+        dummy.scale.set(tree.r * (highQuality ? .9 : 1.05), tree.r * (highQuality ? .8 : .95), 1); dummy.rotation.set((j % 3 - 1) * .7, tree.phase + j * 1.2, sway * .15); dummy.updateMatrix(); crowns.current.setMatrixAt(i * crownPlanes + j, dummy.matrix);
+        if (!ready.current) crowns.current.setColorAt(i * crownPlanes + j, palette[i % 4]!);
       }
     });
-    if (!ready.current) { trunks.current.instanceMatrix.needsUpdate = true; if (crowns.current.instanceColor) crowns.current.instanceColor.needsUpdate = true; }
-    ready.current = true; crowns.current.instanceMatrix.needsUpdate = true;
+    if (!ready.current) {
+      trunks.current.instanceMatrix.needsUpdate = true;
+      if (crowns.current.instanceColor) crowns.current.instanceColor.needsUpdate = true;
+      ready.current = true;
+    }
+    crowns.current.instanceMatrix.needsUpdate = true;
   });
-  return <group><instancedMesh ref={trunks} args={[undefined, undefined, trees.length * 3]} castShadow><cylinderGeometry args={[.7, 1, 1, 6]} /><meshStandardMaterial color="#5d5543" roughness={1} /></instancedMesh><instancedMesh ref={crowns} args={[undefined, undefined, trees.length * 12]} castShadow receiveShadow><planeGeometry args={[2, 2]} /><meshStandardMaterial map={foliage} alphaTest={.4} side={THREE.DoubleSide} roughness={1} /></instancedMesh></group>;
+  return <group><instancedMesh ref={trunks} args={[undefined, undefined, trees.length * 3]} castShadow={highQuality}><cylinderGeometry args={[.7, 1, 1, 6]} /><meshStandardMaterial color="#5d5543" roughness={1} /></instancedMesh><instancedMesh ref={crowns} args={[undefined, undefined, trees.length * crownPlanes]} castShadow={highQuality} receiveShadow={highQuality}><planeGeometry args={[2, 2]} /><meshStandardMaterial map={foliage} alphaTest={.4} side={THREE.DoubleSide} roughness={1} /></instancedMesh></group>;
 });
 function YogaMat({ slot, index }: { slot: Slot; index: number }) {
   const material = useRef<THREE.MeshStandardMaterial>(null!), outline = useRef<THREE.Group>(null!);
@@ -543,7 +559,7 @@ function flameTexture(seed = 0) {
   ctx.fillStyle = mask; ctx.fillRect(0, 0, 128, 256);
   const t = new THREE.CanvasTexture(canvas); t.colorSpace = THREE.SRGBColorSpace; return t;
 }
-function CampfirePit({ reducedMotion }: { reducedMotion: boolean }) {
+function CampfirePit({ reducedMotion, highQuality }: { reducedMotion: boolean; highQuality: boolean }) {
   const flames = useRef<THREE.Group>(null!);
   const embers = useRef<THREE.Group>(null!);
   const smoke = useRef<THREE.Group>(null!);
@@ -553,10 +569,15 @@ function CampfirePit({ reducedMotion }: { reducedMotion: boolean }) {
   const bed = useRef<THREE.Mesh>(null!);
   const billboard = useRef(new THREE.Vector3());
   const maps = useMemo(() => [0, 1, 2].map(flameTexture), []);
+  const tick = useRef(0);
+  const flameCount = highQuality ? 14 : 6;
+  const emberCount = highQuality ? 28 : 10;
+  const smokeCount = highQuality ? 8 : 3;
   useEffect(() => () => maps.forEach(m => m.dispose()), [maps]);
   useFrame(({ clock, camera }) => {
+    if (!highQuality && (++tick.current % 2) !== 0) return;
     const t = reducedMotion ? 0 : clock.elapsedTime;
-    const flicker = reducedMotion ? 1 : .78 + Math.sin(t * 9.7) * .1 + Math.sin(t * 14.3) * .07 + Math.sin(t * 23.1) * .04 + Math.random() * .05;
+    const flicker = reducedMotion ? 1 : .78 + Math.sin(t * 9.7) * .1 + Math.sin(t * 14.3) * .07 + Math.sin(t * 23.1) * .04;
     if (light.current) light.current.intensity = 34 * flicker;
     if (fill.current) fill.current.intensity = 14 * (.85 + flicker * .15);
     if (glow.current) {
@@ -628,15 +649,15 @@ function CampfirePit({ reducedMotion }: { reducedMotion: boolean }) {
       <meshBasicMaterial color="#ff5a18" transparent opacity={.16} depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} />
     </mesh>
     <group ref={flames}>
-      {Array.from({ length: 14 }, (_, i) => <mesh key={i} position={[Math.sin(i * 1.7) * .14, .52, Math.cos(i * 1.3) * .12]} renderOrder={2}>
+      {Array.from({ length: flameCount }, (_, i) => <mesh key={i} position={[Math.sin(i * 1.7) * .14, .52, Math.cos(i * 1.3) * .12]} renderOrder={2}>
         <planeGeometry args={[.7 + (i % 3) * .18, 1.25 + (i % 4) * .22]} />
         <meshBasicMaterial map={maps[i % maps.length]} transparent depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} />
       </mesh>)}
     </group>
-    <group ref={embers}>{Array.from({ length: 28 }, (_, i) => <mesh key={i}><sphereGeometry args={[1, 5, 4]} /><meshBasicMaterial color={i % 4 ? '#ffc266' : '#ff5a22'} transparent depthWrite={false} toneMapped={false} /></mesh>)}</group>
-    <group ref={smoke}>{Array.from({ length: 8 }, (_, i) => <mesh key={i}><sphereGeometry args={[1, 8, 6]} /><meshBasicMaterial color="#b8b0a2" transparent opacity={.05} depthWrite={false} /></mesh>)}</group>
-    <pointLight ref={light} position={[0, 1.25, 0]} color="#ff8c3a" intensity={34} distance={20} decay={1.35} />
-    <pointLight ref={fill} position={[0, .4, 0]} color="#ff4a12" intensity={14} distance={7} decay={1.8} />
+    <group ref={embers}>{Array.from({ length: emberCount }, (_, i) => <mesh key={i}><sphereGeometry args={[1, 5, 4]} /><meshBasicMaterial color={i % 4 ? '#ffc266' : '#ff5a22'} transparent depthWrite={false} toneMapped={false} /></mesh>)}</group>
+    <group ref={smoke}>{Array.from({ length: smokeCount }, (_, i) => <mesh key={i}><sphereGeometry args={[1, 8, 6]} /><meshBasicMaterial color="#b8b0a2" transparent opacity={.05} depthWrite={false} /></mesh>)}</group>
+    <pointLight ref={light} position={[0, 1.25, 0]} color="#ff8c3a" intensity={34} distance={highQuality ? 20 : 14} decay={1.35} />
+    {highQuality && <pointLight ref={fill} position={[0, .4, 0]} color="#ff4a12" intensity={14} distance={7} decay={1.8} />}
     <Sign title="불멍 캠프" subtitle="CAMPFIRE · MARSHMALLOW" at={[0, 2.6, -3.8]} yaw={faceYaw(6.5, -5.5, 0, -3.8)} />
   </group>;
 }
@@ -678,11 +699,11 @@ function WorryBurns({ reducedMotion }: { reducedMotion: boolean }) {
   });
   return <group ref={group} position={[-24, 0, 20]} />;
 }
-function CampfireYard({ reducedMotion }: { reducedMotion: boolean }) {
+function CampfireYard({ reducedMotion, highQuality }: { reducedMotion: boolean; highQuality: boolean }) {
   return <group>
     <Box at={[-24, -.14, 20]} size={[17, .2, 15]} material={materials.stone} />
     <Box at={[-12, -.14, 12]} size={[8, .2, 5]} material={materials.stone} />
-    <CampfirePit reducedMotion={reducedMotion} />
+    <CampfirePit reducedMotion={reducedMotion} highQuality={highQuality} />
     <WorryBurns reducedMotion={reducedMotion} />
     {SLOTS.filter(s => s.kind === 'log').map(slot => <group key={slot.id} position={[slot.x, 0, slot.z]} rotation={[0, slot.yaw, 0]}>
       <mesh position={[0, .28, 0]} rotation={[0, 0, Math.PI / 2]}><cylinderGeometry args={[.22, .26, 1.5, 10]} /><meshStandardMaterial color="#5c4a38" roughness={1} /></mesh>
@@ -935,17 +956,19 @@ function OnsenYard({ reducedMotion, lanternLit }: { reducedMotion: boolean; lant
     <Lantern at={along(.82, 1)} lit={lanternLit} phase={1.8} reducedMotion={reducedMotion} />
   </group>;
 }
-function Birds({ reducedMotion }: { reducedMotion: boolean }) {
+function Birds({ reducedMotion, highQuality }: { reducedMotion: boolean; highQuality: boolean }) {
   const group = useRef<THREE.Group>(null!);
-  const birds = useMemo(() => Array.from({ length: 10 }, (_, i) => ({
+  const tick = useRef(0);
+  const birds = useMemo(() => Array.from({ length: highQuality ? 10 : 5 }, (_, i) => ({
     r: 18 + (i % 5) * 4.5,
     y: 9 + (i % 4) * 2.2,
     speed: .12 + (i % 3) * .04,
     phase: i * 1.7,
     tilt: (i % 2 ? 1 : -1) * .15
-  })), []);
+  })), [highQuality]);
   useFrame(({ clock }) => {
-    const t = reducedMotion ? 0 : clock.elapsedTime;
+    if (reducedMotion || (!highQuality && (++tick.current % 2) !== 0)) return;
+    const t = clock.elapsedTime;
     group.current.children.forEach((child, i) => {
       const b = birds[i]!;
       const a = t * b.speed + b.phase;
@@ -1063,7 +1086,7 @@ function SunsetSky({ day }: { day: DayCycle }) {
   </group>;
 }
 /** Courtyard snack stall — walk up for 라면 · 맥반석 계란 · 식혜. */
-function ShopStall({ lanternLit = 0 }: { lanternLit?: number }) {
+function ShopStall({ lanternLit = 0, highQuality = false }: { lanternLit?: number; highQuality?: boolean }) {
   const { x, z, yaw } = SHOP;
   return <group position={[x, 0, z]} rotation={[0, yaw, 0]}>
     <Box at={[0, -.08, .2]} size={[3.4, .16, 2.2]} material={materials.stone} />
@@ -1080,7 +1103,7 @@ function ShopStall({ lanternLit = 0 }: { lanternLit?: number }) {
     <mesh position={[.72, 1.3, .52]} rotation={[.12, 0, 0]}><cylinderGeometry args={[.09, .09, .38, 10]} /><meshStandardMaterial color="#e8d9b8" roughness={.55} /></mesh>
     <mesh position={[.72, 1.52, .52]}><cylinderGeometry args={[.1, .1, .06, 10]} /><meshStandardMaterial color="#8b6b3d" roughness={.6} /></mesh>
     <Sign title={SHOP.name} subtitle={SHOP.english} at={[0, 2.85, .1]} yaw={0} near={16} />
-    <pointLight position={[0, 2.1, .4]} color="#f6d4a0" intensity={4 + 6 * lanternLit} distance={7} decay={2} />
+    {(highQuality || lanternLit > .05) && <pointLight position={[0, 2.1, .4]} color="#f6d4a0" intensity={4 + 6 * lanternLit} distance={7} decay={2} />}
   </group>;
 }
 export const World = memo(function World({ reducedMotion, highQuality, day }: { reducedMotion: boolean; highQuality: boolean; day: DayCycle }) {
@@ -1088,9 +1111,9 @@ export const World = memo(function World({ reducedMotion, highQuality, day }: { 
   return <group>
     <SunsetSky day={day} />
     <hemisphereLight color={day.hemiSky} groundColor={day.hemiGround} intensity={day.hemi} />
-    <directionalLight position={day.sunPos} color={day.sunColor} intensity={day.sun} castShadow={highQuality} shadow-mapSize={[2048, 2048]} shadow-camera-left={-75} shadow-camera-right={75} shadow-camera-top={75} shadow-camera-bottom={-75} shadow-camera-far={150} shadow-bias={-.0003} shadow-normalBias={.08} />
-    <directionalLight position={[day.sunPos[0] * .4, Math.max(4, day.sunPos[1] * .35), day.sunPos[2] * .4]} color="#f0c49a" intensity={day.glow > .12 ? .28 * day.glow : 0} />
-    <ambientLight color="#2a3a48" intensity={day.nightness > .35 ? .22 + day.nightness * .2 : 0} />
+    <directionalLight position={day.sunPos} color={day.sunColor} intensity={day.sun} castShadow={highQuality} shadow-mapSize={[1024, 1024]} shadow-camera-left={-60} shadow-camera-right={60} shadow-camera-top={60} shadow-camera-bottom={-60} shadow-camera-far={120} shadow-bias={-.0003} shadow-normalBias={.08} />
+    {day.glow > .12 && <directionalLight position={[day.sunPos[0] * .4, Math.max(4, day.sunPos[1] * .35), day.sunPos[2] * .4]} color="#f0c49a" intensity={.28 * day.glow} />}
+    {day.nightness > .35 && <ambientLight color="#2a3a48" intensity={.22 + day.nightness * .2} />}
     <Terrain />
     <Box at={[0, -.16, 2]} size={[33, .18, 36]} material={materials.stone} />
     <Box at={[0, -.14, -18]} size={[7, .2, 18]} material={materials.stone} />
@@ -1101,18 +1124,18 @@ export const World = memo(function World({ reducedMotion, highQuality, day }: { 
     {Array.from({ length: 9 }, (_, i) => <Box key={i} at={[-14 + i * 3.5, -.045, 6]} size={[.025, .01, 28]} color="#a5aa95" shadow={false} />)}
     <Water x={0} z={-6} w={13} d={8} reducedMotion={reducedMotion} />
     <CourtyardBridge lanternLit={lanternLit} reducedMotion={reducedMotion} />
-    <Forest reducedMotion={reducedMotion} />
-    <Birds reducedMotion={reducedMotion} />
+    <Forest reducedMotion={reducedMotion} highQuality={highQuality} />
+    <Birds reducedMotion={reducedMotion} highQuality={highQuality} />
     {(['yoga', 'spa', 'floating', 'tea'] as const).map(id => <Pavilion key={id} id={id} lit={lanternLit} reducedMotion={reducedMotion} />)}
-    <CampfireYard reducedMotion={reducedMotion} />
+    <CampfireYard reducedMotion={reducedMotion} highQuality={highQuality} />
     <OnsenYard reducedMotion={reducedMotion} lanternLit={lanternLit} />
-    <ShopStall lanternLit={lanternLit} />
+    <ShopStall lanternLit={lanternLit} highQuality={highQuality} />
     <Furnishings reducedMotion={reducedMotion} highQuality={highQuality} />
     <SaunaCabin reducedMotion={reducedMotion} />
     <EntranceGate />
-    {[-1, 1].flatMap((side, si) => [-16, 10, 20].map((z, zi) => <Lantern key={`${side}-${z}`} at={[side * 6, 0, z]} lit={lanternLit} phase={si + zi * 1.4} reducedMotion={reducedMotion} />))}
+    {[-1, 1].flatMap((side, si) => [-16, 10, 20].map((z, zi) => <Lantern key={`${side}-${z}`} at={[side * 6, 0, z]} lit={lanternLit} phase={si + zi * 1.4} reducedMotion={reducedMotion} highQuality={highQuality} />))}
     {([[-11, 9], [11, 9], [-9, -12], [9, -12], [5.8, 12]] as const).map(([hx, hz], i) =>
-      <HorongPole key={`horong-${hx}-${hz}`} at={[hx, 0, hz]} lit={Math.max(lanternLit, .32)} phase={i * 1.4} reducedMotion={reducedMotion} />
+      <HorongPole key={`horong-${hx}-${hz}`} at={[hx, 0, hz]} lit={Math.max(lanternLit, .32)} phase={i * 1.4} reducedMotion={reducedMotion} highQuality={highQuality} />
     )}
     <Sign title="REVERN" subtitle="잠시, 나에게 돌아오는 시간" at={[9, 1.7, 21]} yaw={-.35} />
     <Box at={[9, .7, 21]} size={[.12, 1.4, .12]} material={materials.darkWood} />

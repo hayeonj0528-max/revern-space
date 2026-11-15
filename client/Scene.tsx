@@ -29,6 +29,9 @@ function Controller({ firstPerson, reducedMotion, joined, day, onReady, onStats 
   const lastView = useRef(firstPerson);
   const steering = useRef({ active: false, yaw: 0 });
   const autoLook = useRef(false), looking = useRef(false), manualLookUntil = useRef(0);
+  const hit = useRef(new THREE.Vector3()), camDist = useRef(new THREE.Vector3()), offset = useRef(new THREE.Vector3());
+  const skyColor = useRef(new THREE.Color()), fogColor = useRef(new THREE.Color());
+  const uiOpenAt = useRef(0), uiOpenCached = useRef(false);
   useEffect(() => {
     const keydown = (e: KeyboardEvent) => { if ((e.target as HTMLElement).matches('input,select,textarea,button') || document.querySelector('[role="dialog"]')) return; if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) { e.preventDefault(); keys.current.add(e.code); } };
     const keyup = (e: KeyboardEvent) => { keys.current.delete(e.code); if (!keys.current.size && !touchInput.x && !touchInput.z) steering.current.active = false; };
@@ -70,7 +73,9 @@ function Controller({ firstPerson, reducedMotion, joined, day, onReady, onStats 
       } else correction.current.set((p.x - motion.position.x) * .25, (p.z - motion.position.z) * .25);
       lastSnapshot.current = state.snapshot; lastSlot.current = p.slot;
     }
-    const uiOpen = !!document.querySelector('[role="dialog"]');
+    const now = performance.now();
+    if (now - uiOpenAt.current > 120) { uiOpenAt.current = now; uiOpenCached.current = !!document.querySelector('[role="dialog"]'); }
+    const uiOpen = uiOpenCached.current;
     let dx = 0, dz = 0;
     motion.walking = false;
     if (joined && p && !p.slot && !uiOpen && state.connection === 'connected' && !['drinking', 'pouring'].includes(p.activity)) {
@@ -117,10 +122,10 @@ function Controller({ firstPerson, reducedMotion, joined, day, onReady, onStats 
     } else {
       desired.current.set(Math.sin(motion.yaw) * (hammock ? 4.4 : campRest ? 3.6 : 5.2), (hammock ? 1.45 : campRest ? 1.55 : 1.9) + motion.pitch * 2.2, Math.cos(motion.yaw) * (hammock ? 4.4 : campRest ? 3.6 : 5.2)).add(target.current);
       if (yoga || saunaRest || teaRest || campRest) { const shoulder = teaRest ? -1.7 : campRest ? 0 : 1.7; desired.current.x += Math.cos(motion.yaw) * shoulder; desired.current.z -= Math.sin(motion.yaw) * shoulder; }
-      ray.current.set(target.current, desired.current.clone().sub(target.current).normalize());
-      const hit = new THREE.Vector3();
-      boxes.current.forEach(box => { if (ray.current.intersectBox(box, hit)) { const len = hit.distanceTo(target.current) - .2; if (len > .05) distance = Math.min(distance, len); } });
-      const offset = desired.current.clone().sub(target.current); if (offset.length() > distance) desired.current.copy(target.current).add(offset.setLength(Math.max(.35, distance)));
+      offset.current.copy(desired.current).sub(target.current).normalize();
+      ray.current.set(target.current, offset.current);
+      boxes.current.forEach(box => { if (ray.current.intersectBox(box, hit.current)) { const hitLen = hit.current.distanceTo(target.current) - .2; if (hitLen > .05) distance = Math.min(distance, hitLen); } });
+      offset.current.copy(desired.current).sub(target.current); if (offset.current.length() > distance) desired.current.copy(target.current).add(offset.current.setLength(Math.max(.35, distance)));
       // Keep the follow camera below the interior beams.
       desired.current.y = Math.min(p?.zone === 'sauna' ? 3.5 : 4.65, desired.current.y);
       camera.position.lerp(desired.current, resetCamera || reducedMotion ? 1 : 1 - Math.exp(-dt * 10));
@@ -129,16 +134,14 @@ function Controller({ firstPerson, reducedMotion, joined, day, onReady, onStats 
       if (campRest) target.current.y -= .35;
       camera.lookAt(target.current);
     }
-    motion.cameraDistance = firstPerson ? 0 : camera.position.distanceTo(new THREE.Vector3(motion.position.x, headY, motion.position.z + (lying ? -.5 : 0)));
+    motion.cameraDistance = firstPerson ? 0 : camera.position.distanceTo(camDist.current.set(motion.position.x, headY, motion.position.z + (lying ? -.5 : 0)));
     {
       const floating = p?.zone === 'floating';
-      const sky = floating ? '#0c161c' : day.background;
-      const fogColor = floating ? '#162c27' : day.fog;
-      if (scene.background instanceof THREE.Color) scene.background.lerp(new THREE.Color(sky), dt * 2);
+      if (scene.background instanceof THREE.Color) scene.background.lerp(skyColor.current.set(floating ? '#0c161c' : day.background), dt * 2);
       if (scene.fog instanceof THREE.Fog) {
-        scene.fog.color.lerp(new THREE.Color(fogColor), dt * 2);
-        scene.fog.near = floating ? 25 : 55 + day.nightness * 25;
-        scene.fog.far = floating ? 100 : 170 + day.nightness * 50;
+        scene.fog.color.lerp(fogColor.current.set(floating ? '#162c27' : day.fog), dt * 2);
+        scene.fog.near = floating ? 22 : 40 + day.nightness * 20;
+        scene.fog.far = floating ? 90 : 130 + day.nightness * 35;
       }
       gl.toneMappingExposure += ((floating ? .78 : day.exposure) - gl.toneMappingExposure) * Math.min(1, dt * 2);
     }
@@ -155,9 +158,9 @@ function Cast({ reducedMotion, hideNames }: { reducedMotion: boolean; hideNames:
 export function Scene({ firstPerson, reducedMotion, highQuality, joined, hideNames, day, onReady, onStats }: { firstPerson: boolean; reducedMotion: boolean; highQuality: boolean; joined: boolean; hideNames: boolean; day: DayCycle; onReady: () => void; onStats: (fps: number) => void }) {
   const [contextLost, setContextLost] = useState(false);
   return <SceneBoundary>{contextLost && <div className="webgl-error" role="alert"><h2>3D 화면 연결이 중단됐어요</h2><p>다른 3D 탭을 닫은 후 다시 열어 주세요.</p><button onClick={() => location.reload()}>다시 열기</button></div>}
-    {/* Sharpness (dpr/AA) stays on for phones; highQuality only gates heavy shadows/reflections. */}
-    <Canvas shadows={highQuality} dpr={[1, 2]} camera={{ position: [0, 3.7, 23], fov: 60, near: .08, far: 260 }} gl={{ antialias: true, powerPreference: 'high-performance', alpha: false }} onCreated={({ gl }) => { gl.toneMapping = THREE.ACESFilmicToneMapping; gl.toneMappingExposure = day.exposure; gl.domElement.addEventListener('webglcontextlost', event => { event.preventDefault(); setContextLost(true); }); }} fallback={<div className="webgl-error">이 브라우저에서는 WebGL을 사용할 수 없어요. 최신 Chrome에서 열어 주세요.</div>}>
-      <color attach="background" args={[day.background]} /><fog attach="fog" args={[day.fog, 55 + day.nightness * 25, 170 + day.nightness * 50]} />
+    {/* Mobile keeps readable sharpness (≤1.5×) without 2× fill-rate; shadows stay behind highQuality. */}
+    <Canvas shadows={highQuality} dpr={highQuality ? [1, 2] : [1, 1.5]} camera={{ position: [0, 3.7, 23], fov: 60, near: .1, far: highQuality ? 220 : 140 }} gl={{ antialias: true, powerPreference: 'high-performance', alpha: false, stencil: false, depth: true }} onCreated={({ gl }) => { gl.toneMapping = THREE.ACESFilmicToneMapping; gl.toneMappingExposure = day.exposure; gl.domElement.addEventListener('webglcontextlost', event => { event.preventDefault(); setContextLost(true); }); }} fallback={<div className="webgl-error">이 브라우저에서는 WebGL을 사용할 수 없어요. 최신 Chrome에서 열어 주세요.</div>}>
+      <color attach="background" args={[day.background]} /><fog attach="fog" args={[day.fog, 40 + day.nightness * 20, 130 + day.nightness * 35]} />
       <Suspense fallback={null}><World reducedMotion={reducedMotion} highQuality={highQuality} day={day} /><Cast reducedMotion={reducedMotion} hideNames={hideNames} /></Suspense>
       <Controller firstPerson={firstPerson} reducedMotion={reducedMotion} joined={joined} day={day} onReady={onReady} onStats={onStats} />
     </Canvas>
