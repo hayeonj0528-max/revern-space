@@ -23,11 +23,14 @@ function distToSegment(x: number, z: number, ax: number, az: number, bx: number,
   return Math.hypot(x - (ax + t * dx), z - (az + t * dz));
 }
 
-/** East–west walk corridor — bamboo hedges sit outside halfW. */
+/** East–west walk corridor — center lane only; side rails keep you on the path. */
 export const ONSEN_PATH = {
   from: [10.5, 16] as [number, number],
   to: [24, 16] as [number, number],
-  halfW: 2.15
+  /** Visual path half-width (curb to center). */
+  halfW: 1.35,
+  /** Walkable half-width — narrower so you stay in the middle. */
+  walkHalf: 1.0
 } as const;
 
 export function onsenPathLength() {
@@ -41,10 +44,10 @@ export function onsenPathYaw() {
 }
 
 export function onOnsenWalk(x: number, z: number) {
-  const { from, to, halfW } = ONSEN_PATH;
-  if (distToSegment(x, z, from[0], from[1], to[0], to[1]) < halfW) return true;
-  // Apron from path end up to the bath stairs.
-  if (Math.abs(x - ONSEN.x) < 5.5 && z >= 14.5 && z <= 20.5) return true;
+  const { from, to, walkHalf } = ONSEN_PATH;
+  if (distToSegment(x, z, from[0], from[1], to[0], to[1]) < walkHalf) return true;
+  // Narrow apron from path end up to the bath stairs.
+  if (Math.abs(x - ONSEN.x) < walkHalf + .35 && z >= 14.5 && z <= 20.5) return true;
   return false;
 }
 

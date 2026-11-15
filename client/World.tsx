@@ -706,31 +706,36 @@ function BambooGrove() {
     const pdx = tx - fx, pdz = tz - fz, plen = Math.hypot(pdx, pdz) || 1;
     const ux = pdx / plen, uz = pdz / plen, px = -uz, pz = ux;
     const onWalk = (x: number, z: number) => onOnsenWalk(x, z) || Math.hypot(x - SHOP.x, z - SHOP.z) < 3.2;
+    // Wood deck (15×14) + bath — never plant culms in the water or on the clearing floor.
+    const inOnsenClearing = (x: number, z: number) => Math.abs(x - ONSEN.x) < 7.8 && Math.abs(z - ONSEN.z) < 7.2;
     const push = (x: number, z: number, cluster = 1, hedge = false) => {
       for (let k = 0; k < cluster; k++) {
         const qx = x + (rand() - .5) * .18, qz = z + (rand() - .5) * .18;
+        if (inOnsenClearing(qx, qz)) continue;
         if (hedge ? onWalk(qx, qz) : onBambooPath(qx, qz) || onWalk(qx, qz)) continue;
         data.push({ x: qx, z: qz, h: 5.2 + rand() * 3.8, lean: (rand() - .5) * .035, phase: rand() * 8, thick: .048 + rand() * .032 });
       }
     };
-    // Bamboo hedges hug the path edges — leaves a clear walk down the middle.
-    for (let t = .05; t <= .98; t += .03) {
+    // Bamboo hedges hug the narrower center path — stop before the onsen apron.
+    for (let t = .05; t <= .82; t += .045) {
       const cx = fx + pdx * t, cz = fz + pdz * t;
-      for (const d of [2.55, 3.15, 3.85, 4.55]) {
-        push(cx + px * d + (rand() - .5) * .05, cz + pz * d, 2, true);
-        push(cx - px * d + (rand() - .5) * .05, cz - pz * d, 2, true);
+      for (const d of [1.9, 2.7, 3.6]) {
+        push(cx + px * d + (rand() - .5) * .05, cz + pz * d, 1, true);
+        push(cx - px * d + (rand() - .5) * .05, cz - pz * d, 1, true);
       }
     }
-    for (let a = 0; a < Math.PI * 2; a += .11) {
-      for (const r of [7.5, 8.6, 9.8]) {
+    // Ring sits outside the deck so culms frame the clearing, not the water.
+    for (let a = 0; a < Math.PI * 2; a += .16) {
+      for (const r of [9.0, 10.6]) {
         const bx = ONSEN.x + Math.cos(a) * r, bz = ONSEN.z + Math.sin(a) * r;
-        if (bz < ONSEN.z - 2) continue; // keep south entrance open
-        if (onOnsenWalk(bx, bz)) continue;
-        push(bx, bz, 2);
+        if (bz < ONSEN.z - 2.4) continue; // keep south entrance open
+        if (onOnsenWalk(bx, bz) || inOnsenClearing(bx, bz)) continue;
+        push(bx, bz, 1);
       }
     }
     return data;
   }, []);
+  const RING = 5, LEAF = 6;
   useEffect(() => {
     const dummy = new THREE.Object3D();
     plants.forEach((p, i) => {
@@ -740,18 +745,15 @@ function BambooGrove() {
       dummy.rotation.set(p.lean, p.phase, p.lean * .35);
       dummy.updateMatrix();
       culms.current.setMatrixAt(i, dummy.matrix);
-      // Node rings along the culm
-      const ringCount = 7;
-      for (let r = 0; r < ringCount; r++) {
-        const t = (r + 1) / (ringCount + 1);
+      for (let r = 0; r < RING; r++) {
+        const t = (r + 1) / (RING + 1);
         dummy.position.set(p.x + p.lean * t * .8, p.h * t, p.z);
         const rad = p.thick * (1.15 - t * .25);
         dummy.scale.set(rad * 1.35, .035, rad * 1.35);
         dummy.rotation.set(0, p.phase, 0);
         dummy.updateMatrix();
-        nodes.current.setMatrixAt(i * ringCount + r, dummy.matrix);
+        nodes.current.setMatrixAt(i * RING + r, dummy.matrix);
       }
-      // Short side shoots near the upper third
       for (let s = 0; s < 2; s++) {
         const t = .55 + s * .18;
         const ang = p.phase + s * 2.1;
@@ -761,16 +763,15 @@ function BambooGrove() {
         dummy.updateMatrix();
         shoots.current.setMatrixAt(i * 2 + s, dummy.matrix);
       }
-      // Lance leaf fans in the canopy
-      for (let j = 0; j < 8; j++) {
-        const tier = Math.floor(j / 4);
-        const ang = p.phase + j * .9 + tier;
-        const lift = .62 + tier * .18 + (j % 4) * .03;
+      for (let j = 0; j < LEAF; j++) {
+        const tier = Math.floor(j / 3);
+        const ang = p.phase + j * 1.05 + tier;
+        const lift = .64 + tier * .2 + (j % 3) * .03;
         dummy.position.set(p.x + Math.cos(ang) * (.18 + tier * .08), p.h * lift, p.z + Math.sin(ang) * (.18 + tier * .08));
-        dummy.scale.set(1.15, .55, 1);
+        dummy.scale.set(1.2, .58, 1);
         dummy.rotation.set(.55 + tier * .15, ang, (j % 2 ? .4 : -.4));
         dummy.updateMatrix();
-        leaves.current.setMatrixAt(i * 8 + j, dummy.matrix);
+        leaves.current.setMatrixAt(i * LEAF + j, dummy.matrix);
       }
     });
     culms.current.instanceMatrix.needsUpdate = true;
@@ -779,19 +780,19 @@ function BambooGrove() {
     leaves.current.instanceMatrix.needsUpdate = true;
   }, [plants]);
   return <group>
-    <instancedMesh ref={culms} args={[undefined, undefined, plants.length]} castShadow>
-      <cylinderGeometry args={[1, 1.12, 1, 8]} />
+    <instancedMesh ref={culms} args={[undefined, undefined, plants.length]} castShadow={false}>
+      <cylinderGeometry args={[1, 1.12, 1, 6]} />
       <meshStandardMaterial map={culmMap} roughness={.72} metalness={.02} />
     </instancedMesh>
-    <instancedMesh ref={nodes} args={[undefined, undefined, plants.length * 7]} castShadow>
-      <cylinderGeometry args={[1, 1, 1, 8]} />
+    <instancedMesh ref={nodes} args={[undefined, undefined, plants.length * RING]} castShadow={false}>
+      <cylinderGeometry args={[1, 1, 1, 6]} />
       <meshStandardMaterial color="#3f5428" roughness={.9} />
     </instancedMesh>
-    <instancedMesh ref={shoots} args={[undefined, undefined, plants.length * 2]} castShadow>
-      <cylinderGeometry args={[.7, 1, 1, 6]} />
+    <instancedMesh ref={shoots} args={[undefined, undefined, plants.length * 2]} castShadow={false}>
+      <cylinderGeometry args={[.7, 1, 1, 5]} />
       <meshStandardMaterial map={culmMap} roughness={.75} />
     </instancedMesh>
-    <instancedMesh ref={leaves} args={[undefined, undefined, plants.length * 8]}>
+    <instancedMesh ref={leaves} args={[undefined, undefined, plants.length * LEAF]}>
       <planeGeometry args={[1.35, .7]} />
       <meshStandardMaterial map={leafMap} alphaTest={.35} side={THREE.DoubleSide} roughness={.95} />
     </instancedMesh>

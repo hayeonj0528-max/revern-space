@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { SLOTS, ZONES, YOGA_INTERACTION_RADIUS, nearbyYogaMat, zoneAt, isTea, type Appearance, type ClientMessage, type Player, type Snapshot, type ZoneId } from '../shared/world.js';
 import { SPA_BATHS, SAUNA, bathAt } from '../shared/spa.js';
-import { ONSEN, onOnsenWalk, onsenAt } from '../shared/onsen.js';
-import { stepLocomotion, stepStrafe } from '../shared/locomotion.js';
+import { ONSEN, onsenAt } from '../shared/onsen.js';
+import { stepLocomotion } from '../shared/locomotion.js';
 
 type Session = { player: Player; token: string; dx: number; dz: number; inputAt: number; disconnectedAt: number | null; send: ((data: object) => void) | null };
 export class Room {
@@ -49,8 +49,6 @@ export class Room {
         if (![data.dx, data.dz, data.yaw].every(v => typeof v === 'number' && Number.isFinite(v)) || Math.abs(data.dx) > 1 || Math.abs(data.dz) > 1 || Math.abs(data.yaw) > Math.PI * 4) return this.error(s, '올바르지 않은 이동 요청입니다.');
         if (p.slot || p.actionUntil > now) return;
         const length = Math.max(1, Math.hypot(data.dx, data.dz)); s.dx = data.dx / length; s.dz = data.dz / length;
-        // Facing from the client is authoritative on the bamboo path (strafe mode).
-        if (onOnsenWalk(p.x, p.z)) p.yaw = ((data.yaw + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
         s.inputAt = now; break;
       }
       case 'travel': {
@@ -163,9 +161,7 @@ export class Room {
       }
       if (p.slot || p.actionUntil > now) continue;
       if (now - s.inputAt > 300) s.dx = s.dz = 0;
-      const next = onOnsenWalk(p.x, p.z)
-        ? stepStrafe(p.x, p.z, p.yaw, s.dx, s.dz, dt)
-        : stepLocomotion(p.x, p.z, p.yaw, s.dx, s.dz, dt);
+      const next = stepLocomotion(p.x, p.z, p.yaw, s.dx, s.dz, dt);
       const inBath = bathAt(next.x, next.z) || onsenAt(next.x, next.z);
       p.activity = next.walking ? 'walking' : inBath ? 'bathing' : 'idle';
       p.x = next.x; p.z = next.z; p.yaw = next.yaw; p.zone = zoneAt(p.x, p.z);

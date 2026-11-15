@@ -1,5 +1,5 @@
 import { SPA_BATHS, SAUNA, type BathId } from './spa.js';
-import { ONSEN, ONSEN_HAMMOCKS } from './onsen.js';
+import { ONSEN, ONSEN_HAMMOCKS, ONSEN_PATH } from './onsen.js';
 
 export type ZoneId = 'courtyard' | 'yoga' | 'spa' | 'sauna' | 'floating' | 'tea' | 'campfire' | 'onsen';
 export type Activity = 'idle' | 'walking' | 'yoga' | 'sitting' | 'lying' | 'drinking' | 'pouring' | 'bathing' | 'sauna' | 'roasting';
@@ -200,6 +200,22 @@ for (const side of [-1, 1]) { COLLIDERS.push({ x: side * 5.5, z: 26, w: .5, d: .
   COLLIDERS.push({ x: ONSEN.x, z: ONSEN.z + ONSEN.d / 2, w: ONSEN.w, d: .3, height: .35 });
   const side = (ONSEN.w - 3.2) / 2;
   for (const sign of [-1, 1]) COLLIDERS.push({ x: ONSEN.x + sign * (1.6 + side / 2), z: ONSEN.z - ONSEN.d / 2, w: side, d: .3, height: .35 });
+}
+
+// Bamboo path rails — only the center lane is walkable (same turn-to-walk as everywhere).
+{
+  const [fx, fz] = ONSEN_PATH.from, [tx] = ONSEN_PATH.to;
+  const midX = (fx + tx) / 2;
+  const len = Math.abs(tx - fx) + .6;
+  const rail = .5;
+  const railZ = ONSEN_PATH.walkHalf + .34 + rail / 2;
+  COLLIDERS.push({ x: midX, z: fz + railZ, w: len, d: rail, height: 1.15 });
+  COLLIDERS.push({ x: midX, z: fz - railZ, w: len, d: rail, height: 1.15 });
+  // Apron rails up to the bath stairs — keep the approach centered.
+  const apronLen = 4.2, apronMidZ = fz + apronLen / 2 + .15;
+  const railX = ONSEN_PATH.walkHalf + .34 + rail / 2;
+  COLLIDERS.push({ x: ONSEN.x + railX, z: apronMidZ, w: rail, d: apronLen, height: 1.15 });
+  COLLIDERS.push({ x: ONSEN.x - railX, z: apronMidZ, w: rail, d: apronLen, height: 1.15 });
 }
 
 // Courtyard snack stall — south of onsen approach (yaw 0 → counter along X)

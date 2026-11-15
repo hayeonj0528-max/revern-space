@@ -3,8 +3,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { COLLIDERS, slide, type Player } from '../shared/world';
 import { groundHeightAt } from '../shared/spa';
-import { angleDelta, movementYaw, stepLocomotion, stepStrafe } from '../shared/locomotion';
-import { onOnsenWalk } from '../shared/onsen';
+import { angleDelta, movementYaw, stepLocomotion } from '../shared/locomotion';
 import { network, useSpace } from './network';
 import { Avatar } from './Avatar';
 import { motion, touchInput } from './controls';
@@ -85,12 +84,7 @@ function Controller({ firstPerson, reducedMotion, joined, day, onReady, onStats 
       } else steering.current.active = false;
       dx = -Math.sin(steering.current.yaw) * forward + Math.cos(steering.current.yaw) * side; dz = -Math.cos(steering.current.yaw) * forward - Math.sin(steering.current.yaw) * side;
       const length = Math.max(1, Math.hypot(dx, dz)); dx /= length; dz /= length;
-      // Only on the bamboo path: A/D strafes without turning. Everywhere else, turn then walk.
-      const onBamboo = onOnsenWalk(motion.position.x, motion.position.z);
-      const face = onBamboo ? steering.current.yaw : motion.facingYaw;
-      const next = onBamboo
-        ? stepStrafe(motion.position.x, motion.position.z, face, dx, dz, dt)
-        : stepLocomotion(motion.position.x, motion.position.z, face, dx, dz, dt);
+      const next = stepLocomotion(motion.position.x, motion.position.z, motion.facingYaw, dx, dz, dt);
       if (next.walking) {
         const distance = Math.hypot(next.x - motion.position.x, next.z - motion.position.z);
         const forwardX = (next.x - motion.position.x) / distance, forwardZ = (next.z - motion.position.z) / distance;
@@ -98,9 +92,8 @@ function Controller({ firstPerson, reducedMotion, joined, day, onReady, onStats 
         const [x, z] = slide(next.x, next.z, forwardX * along, forwardZ * along);
         correction.current.x -= x - next.x; correction.current.y -= z - next.z;
         next.x = x; next.z = z;
-        if (!onBamboo) next.yaw = movementYaw(x - motion.position.x, z - motion.position.z);
+        next.yaw = movementYaw(x - motion.position.x, z - motion.position.z);
       }
-      if (onBamboo) next.yaw = face;
       motion.position.set(next.x, groundHeightAt(next.x, next.z), next.z);
       motion.facingYaw = next.yaw; motion.walking = next.walking;
     } else { steering.current.active = autoLook.current = false; }
@@ -162,7 +155,7 @@ function Cast({ reducedMotion, hideNames }: { reducedMotion: boolean; hideNames:
 export function Scene({ firstPerson, reducedMotion, highQuality, joined, hideNames, day, onReady, onStats }: { firstPerson: boolean; reducedMotion: boolean; highQuality: boolean; joined: boolean; hideNames: boolean; day: DayCycle; onReady: () => void; onStats: (fps: number) => void }) {
   const [contextLost, setContextLost] = useState(false);
   return <SceneBoundary>{contextLost && <div className="webgl-error" role="alert"><h2>3D 화면 연결이 중단됐어요</h2><p>다른 3D 탭을 닫은 후 다시 열어 주세요.</p><button onClick={() => location.reload()}>다시 열기</button></div>}
-    <Canvas shadows={highQuality} dpr={highQuality ? [1, 1.5] : 1} camera={{ position: [0, 3.7, 23], fov: 60, near: .08, far: 260 }} gl={{ antialias: true, powerPreference: 'high-performance' }} onCreated={({ gl }) => { gl.toneMapping = THREE.ACESFilmicToneMapping; gl.toneMappingExposure = day.exposure; gl.domElement.addEventListener('webglcontextlost', event => { event.preventDefault(); setContextLost(true); }); }} fallback={<div className="webgl-error">이 브라우저에서는 WebGL을 사용할 수 없어요. 최신 Chrome에서 열어 주세요.</div>}>
+    <Canvas shadows={highQuality} dpr={highQuality ? [1, 1.5] : [1, 1]} camera={{ position: [0, 3.7, 23], fov: 60, near: .08, far: 260 }} gl={{ antialias: highQuality, powerPreference: highQuality ? 'high-performance' : 'low-power', alpha: false }} onCreated={({ gl }) => { gl.toneMapping = THREE.ACESFilmicToneMapping; gl.toneMappingExposure = day.exposure; gl.domElement.addEventListener('webglcontextlost', event => { event.preventDefault(); setContextLost(true); }); }} fallback={<div className="webgl-error">이 브라우저에서는 WebGL을 사용할 수 없어요. 최신 Chrome에서 열어 주세요.</div>}>
       <color attach="background" args={[day.background]} /><fog attach="fog" args={[day.fog, 55 + day.nightness * 25, 170 + day.nightness * 50]} />
       <Suspense fallback={null}><World reducedMotion={reducedMotion} highQuality={highQuality} day={day} /><Cast reducedMotion={reducedMotion} hideNames={hideNames} /></Suspense>
       <Controller firstPerson={firstPerson} reducedMotion={reducedMotion} joined={joined} day={day} onReady={onReady} onStats={onStats} />

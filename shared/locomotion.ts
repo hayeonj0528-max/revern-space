@@ -20,13 +20,3 @@ export function stepLocomotion(x: number, z: number, yaw: number, dx: number, dz
   const moved = Math.hypot(forwardX - x, forwardZ - z);
   return { x: forwardX, z: forwardZ, yaw: moved > .000001 ? movementYaw(forwardX - x, forwardZ - z) : wanted, walking: moved > .000001 };
 }
-
-/** Bamboo-path walk: keep facing, A/D strafes without turning. */
-export function stepStrafe(x: number, z: number, yaw: number, dx: number, dz: number, dt: number) {
-  dt = Math.max(0, Math.min(dt, .1));
-  if (Math.hypot(dx, dz) < .000001) return { x, z, yaw, walking: false };
-  const length = Math.max(1, Math.hypot(dx, dz));
-  const [nextX, nextZ] = slide(x, z, dx / length * SPEED * dt, dz / length * SPEED * dt);
-  const moved = Math.hypot(nextX - x, nextZ - z);
-  return { x: nextX, z: nextZ, yaw, walking: moved > .000001 };
-}
