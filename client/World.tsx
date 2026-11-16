@@ -1205,8 +1205,9 @@ export const World = memo(function World({ reducedMotion, highQuality, day }: { 
     <Furnishings reducedMotion={reducedMotion} highQuality={highQuality} />
     <SaunaCabin reducedMotion={reducedMotion} />
     <EntranceGate />
-    {[-1, 1].flatMap((side, si) => [-16, 10, 20].map((z, zi) => <HorongPole key={`${side}-${z}`} at={[side * 6, 0, z]} lit={lanternLit} phase={si + zi * 1.4} reducedMotion={reducedMotion} highQuality={highQuality} />))}
-    {([[-11, 9], [11, 9], [-9, -12], [9, -12], [5.8, 12]] as const).map(([hx, hz], i) =>
+    {/* East side: keep only the shop-adjacent lamp — drop the two behind toward the spa. */}
+    {[-1, 1].flatMap((side, si) => (side === 1 ? [-16, 20] : [-16, 10, 20]).map((z, zi) => <HorongPole key={`${side}-${z}`} at={[side * 6, 0, z]} lit={lanternLit} phase={si + zi * 1.4} reducedMotion={reducedMotion} highQuality={highQuality} />))}
+    {([[-11, 9], [11, 9], [-9, -12], [9, -12]] as const).map(([hx, hz], i) =>
       <HorongPole key={`horong-${hx}-${hz}`} at={[hx, 0, hz]} lit={Math.max(lanternLit, .32)} phase={i * 1.4} reducedMotion={reducedMotion} highQuality={highQuality} />
     )}
     <Sign title="REVERN" subtitle="잠시, 나에게 돌아오는 시간" at={[9, 1.7, 21]} yaw={-.35} />
