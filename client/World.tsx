@@ -707,7 +707,7 @@ function BodyfriendMassageChair({ slot }: { slot: Slot }) {
     <Box at={[.58, .78, .4]} size={[.1, .28, .34]} color="#1a1816" />
     <Box at={[.61, .78, .4]} size={[.03, .18, .22]} color="#e2c48a" shadow={false} />
     <Box at={[0, .2, 1.05]} size={[.7, .05, .14]} color="#e2c48a" shadow={false} />
-    <Sign title="바디프렌드" subtitle="BODYFRIEND" at={[0, 1.85, .15]} yaw={Math.PI} near={14} />
+    <Sign title="바디프렌드" subtitle="BODYFRIEND" at={[0, 1.85, -.35]} yaw={0} near={16} />
     <pointLight position={[0, 1.55, .2]} color="#f0d4a8" intensity={2.4} distance={4.5} decay={2} />
     <group ref={outline} visible={false}>
       <Box at={[0, 1.05, .05]} size={[1.4, .025, 2.45]} color="#e2d7b3" shadow={false} />
