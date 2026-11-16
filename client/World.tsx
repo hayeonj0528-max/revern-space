@@ -22,7 +22,7 @@ function roofGeometry(w: number, d: number, lift = 0, opts?: { shallow?: boolean
   const flush = opts?.flushFace;
   const sidePad = shallow ? 1.35 : 5.1;
   const ew = w + sidePad, ed = d + (flush != null ? sidePad : sidePad);
-  const hipDrop = shallow ? 2.55 : 4.05, cornerLift = shallow ? .55 : 2.85;
+  const hipDrop = shallow ? 2.55 : 4.05, cornerLift = shallow || flush != null ? 0 : 2.85;
   for (let j = 0; j <= nz; j++) for (let i = 0; i <= nx; i++) {
     let x = (i / nx - .5) * ew, z = (j / nz - .5) * ed;
     // Pull the open-front edge back flush with the wall line — no overhang.
@@ -30,7 +30,7 @@ function roofGeometry(w: number, d: number, lift = 0, opts?: { shallow?: boolean
     if (flush === 1) z = Math.min(z, d / 2);
     const ax = Math.abs(x) / (ew / 2), az = Math.abs(z) / Math.max(ed / 2, .001);
     const hip = Math.max(az, Math.max(0, (ax - .4) / .6));
-    const corner = flush != null ? Math.pow(Math.min(1, ax) * Math.min(1, az * .35), 1.9) : Math.pow(Math.min(1, ax) * Math.min(1, az), 1.55);
+    const corner = flush != null ? 0 : Math.pow(Math.min(1, ax) * Math.min(1, az), 1.55);
     const sag = .18 * Math.sin(ax * Math.PI) * Math.sin(az * Math.PI);
     const y = 7.85 + lift - hipDrop * hip + cornerLift * Math.pow(corner, 1.02) + .12 * Math.pow(hip, 5) - sag;
     vertices.push(x, y, z); uvs.push(i / nx * w / 3.2, j / nz * d / 4);
@@ -199,7 +199,7 @@ function Pavilion({ id, lit = 0, reducedMotion = false }: { id: Exclude<ZoneId, 
       <Box at={[side * .16, .26, 0]} size={[.16, .2, .45]} material={materials.roof} />
       <Box at={[side * .05, .42, 0]} size={[.1, .14, .22]} material={materials.dancheongRed} shadow={false} />
     </group>)}
-    <group position={[x, 0, z]}><CornerRidges w={w} d={d} lift={lift} short={shallowRoof} /></group>
+    {!shallowRoof && <group position={[x, 0, z]}><CornerRidges w={w} d={d} lift={lift} /></group>}
     <Sign title={r.name} subtitle={r.english} at={signAt} yaw={signYaw} />
     {cozy && wallWashes.map(s => <WallWash key={`wash-${s.key}`} at={s.at} yaw={s.yaw} width={s.width} lit={softLit} />)}
     {cozy && softLit > .05 && <>
@@ -947,20 +947,6 @@ function BambooPathWalk() {
     )}
   </group>;
 }
-/** Small 정자 roof over the bath edge — Korean outdoor pavilion cue. */
-function OnsenJeongja() {
-  const geo = useMemo(() => roofGeometry(5.2, 3.4), []);
-  const x = ONSEN.x - 4.2, z = ONSEN.z + 3.4;
-  return <group position={[x, 0, z]}>
-    {[-1, 1].flatMap(sx => [-1, 1].map(sz => <group key={`${sx}-${sz}`}>
-      <Box at={[sx * 1.7, .18, sz * 1.1]} size={[.55, .36, .55]} material={materials.stone} />
-      <Box at={[sx * 1.7, 1.7, sz * 1.1]} size={[.22, 2.8, .22]} material={materials.wood} />
-    </group>))}
-    <Box at={[0, 3.05, 0]} size={[3.8, .18, 2.5]} material={materials.wood} />
-    <Box at={[0, 2.92, 1.15]} size={[3.5, .06, .08]} material={materials.dancheongBlue} shadow={false} />
-    <mesh position={[0, -3.55, 0]} geometry={geo} material={materials.roof} castShadow />
-  </group>;
-}
 function OnsenYard({ reducedMotion, lanternLit }: { reducedMotion: boolean; lanternLit: number }) {
   const [fx, fz] = ONSEN_PATH.from, [tx, tz] = ONSEN_PATH.to;
   const pathYaw = onsenPathYaw();
@@ -973,7 +959,6 @@ function OnsenYard({ reducedMotion, lanternLit }: { reducedMotion: boolean; lant
     {/* Stone apron + smaller timber deck — less ryokan wood clearing */}
     <Box at={[ONSEN.x, -.14, ONSEN.z]} size={[15, .2, 14]} material={materials.stone} />
     <Box at={[ONSEN.x, -.06, ONSEN.z + .4]} size={[9.5, .12, 8.5]} material={materials.wood} />
-    <OnsenJeongja />
     <BambooGrove />
     {ONSEN_HAMMOCKS.map(h => <Hammock key={h.id} id={h.id} a={h.a} b={h.b} height={1.2} sag={.56} />)}
     <Water x={ONSEN.x} z={ONSEN.z} w={ONSEN.w} d={ONSEN.d} basin reducedMotion={reducedMotion} />
