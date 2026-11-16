@@ -7,7 +7,7 @@ import { Room } from './room.js';
 import type { ClientMessage } from '../shared/world.js';
 
 export function createSpaceServer(options: { capacity?: number; graceMs?: number } = {}) {
-  const room = new Room(options.capacity ?? Number(process.env.MAX_CLIENTS || 12), options.graceMs ?? Number(process.env.RECONNECT_GRACE_MS || 15000));
+  const room = new Room(options.capacity ?? Number(process.env.MAX_CLIENTS || 24), options.graceMs ?? Number(process.env.RECONNECT_GRACE_MS || 15000));
   const root = resolve('dist');
   const mime: Record<string, string> = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.wav': 'audio/wav', '.mp3': 'audio/mpeg', '.json': 'application/json' };
   const http = createServer(async (req, res) => {

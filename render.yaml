@@ -11,7 +11,7 @@ services:
       - key: HOST
         value: 0.0.0.0
       - key: MAX_CLIENTS
-        value: "12"
+        value: "24"
       - key: RECONNECT_GRACE_MS
         value: "15000"
       # Leave ALLOWED_ORIGINS empty for same-origin. Set only if the client is on another host.

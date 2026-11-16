@@ -14,7 +14,7 @@ export class Room {
   yogaStartedAt: number;
   saunaSteamStartedAt = 0;
   worryBurnSeq = 0;
-  constructor(public capacity = 12, public graceMs = 15000, now = Date.now()) { this.yogaStartedAt = now; }
+  constructor(public capacity = 24, public graceMs = 15000, now = Date.now()) { this.yogaStartedAt = now; }
   chatMessages() { return this.chat.slice(); }
   pushChat(message: ChatMessage) {
     this.chat.push(message);

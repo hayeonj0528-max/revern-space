@@ -53,7 +53,7 @@ Web Service 하나로 정적 파일과 WebSocket을 함께 제공합니다.
 | `HOST` | `0.0.0.0` |
 | `PORT` | Render가 주입하는 포트를 그대로 사용 (보통 설정 불필요) |
 | `ALLOWED_ORIGINS` | 비워 두면 **같은 Host** Origin만 허용. 분리 배포 시에만 클라이언트 HTTPS 출처를 콤마로 나열 |
-| `MAX_CLIENTS` | `12` (기본) |
+| `MAX_CLIENTS` | `24` (기본) |
 | `RECONNECT_GRACE_MS` | `15000` (기본) |
 | `VITE_WS_URL` | **비움** — 같은 출처 `/ws` 사용 |
 
