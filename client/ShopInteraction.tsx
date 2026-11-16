@@ -45,7 +45,7 @@ export function ShopInteraction() {
         {pay === 'kakao' ? '카카오톡 송금으로 연결'
           : pay === 'metaverse' ? '메타버스 후원 확인'
             : item ? `${item.name} · ${formatWon(item.price)}`
-              : '라면 · 맥반석 계란 · 식혜'}
+              : '라면 · 계란 · 식혜 · 핫바 · 떡볶이'}
       </span>
       {(item || pay) && <button className="secondary" onClick={() => { if (pay) { setPay(null); setShowQr(false); } else setItemId(null); }}>{pay ? '뒤로' : '취소'}</button>}
     </div>

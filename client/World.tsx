@@ -1155,7 +1155,7 @@ function SunsetSky({ day }: { day: DayCycle }) {
     </group>
   </group>;
 }
-/** Courtyard snack stall — walk up for 라면 · 맥반석 계란 · 식혜. */
+/** Courtyard snack stall — 라면 · 계란 · 식혜 · 핫바 · 떡볶이. */
 function ShopStall({ lanternLit = 0, highQuality = false }: { lanternLit?: number; highQuality?: boolean }) {
   const { x, z, yaw } = SHOP;
   return <group position={[x, 0, z]} rotation={[0, yaw, 0]}>
@@ -1168,12 +1168,21 @@ function ShopStall({ lanternLit = 0, highQuality = false }: { lanternLit?: numbe
     <Box at={[0, 2.52, -.35]} size={[3.05, .08, 1.65]} material={materials.roof} />
     <Box at={[0, 2.18, .35]} size={[2.5, .06, .08]} material={materials.dancheongBlue} shadow={false} />
     <Box at={[0, 1.7, -.55]} size={[2.4, 1.1, .12]} material={materials.plaster} />
-    <Box at={[-.75, 1.35, .55]} size={[.42, .18, .42]} color="#c45c3a" />
-    <Box at={[-.75, 1.52, .55]} size={[.28, .16, .28]} color="#f2e6d4" />
-    <mesh position={[-.15, 1.28, .55]}><sphereGeometry args={[.12, 10, 8]} /><meshStandardMaterial color="#d9a066" roughness={.7} /></mesh>
-    <mesh position={[.08, 1.28, .5]}><sphereGeometry args={[.11, 10, 8]} /><meshStandardMaterial color="#c9894a" roughness={.72} /></mesh>
-    <mesh position={[.72, 1.3, .52]} rotation={[.12, 0, 0]}><cylinderGeometry args={[.09, .09, .38, 10]} /><meshStandardMaterial color="#e8d9b8" roughness={.55} /></mesh>
-    <mesh position={[.72, 1.52, .52]}><cylinderGeometry args={[.1, .1, .06, 10]} /><meshStandardMaterial color="#8b6b3d" roughness={.6} /></mesh>
+    <Box at={[-.95, 1.35, .55]} size={[.42, .18, .42]} color="#c45c3a" />
+    <Box at={[-.95, 1.52, .55]} size={[.28, .16, .28]} color="#f2e6d4" />
+    <mesh position={[-.42, 1.28, .55]}><sphereGeometry args={[.12, 10, 8]} /><meshStandardMaterial color="#d9a066" roughness={.7} /></mesh>
+    <mesh position={[-.2, 1.28, .5]}><sphereGeometry args={[.11, 10, 8]} /><meshStandardMaterial color="#c9894a" roughness={.72} /></mesh>
+    <mesh position={[.2, 1.3, .52]} rotation={[.12, 0, 0]}><cylinderGeometry args={[.09, .09, .38, 10]} /><meshStandardMaterial color="#e8d9b8" roughness={.55} /></mesh>
+    <mesh position={[.2, 1.52, .52]}><cylinderGeometry args={[.1, .1, .06, 10]} /><meshStandardMaterial color="#8b6b3d" roughness={.6} /></mesh>
+    {/* 핫바 — warm sausage on a stick */}
+    <mesh position={[.55, 1.38, .55]} rotation={[.55, .2, .15]}><cylinderGeometry args={[.05, .055, .42, 8]} /><meshStandardMaterial color="#c45a3a" roughness={.65} /></mesh>
+    <mesh position={[.55, 1.18, .62]} rotation={[.55, .2, .15]}><cylinderGeometry args={[.012, .012, .28, 6]} /><meshStandardMaterial color="#d8c4a0" roughness={.85} /></mesh>
+    {/* 떡볶이 — red sauce plate with rice cakes */}
+    <mesh position={[.95, 1.24, .52]}><cylinderGeometry args={[.22, .2, .05, 12]} /><meshStandardMaterial color="#e8d9c4" roughness={.7} /></mesh>
+    <mesh position={[.95, 1.28, .52]}><cylinderGeometry args={[.18, .18, .04, 12]} /><meshStandardMaterial color="#c43a28" roughness={.55} /></mesh>
+    {[[-.06, .04], [.05, -.03], [.02, .06], [-.04, -.05]].map(([dx, dz], i) =>
+      <mesh key={i} position={[.95 + dx, 1.33, .52 + dz]} rotation={[.2, i, .4]}><cylinderGeometry args={[.035, .035, .09, 8]} /><meshStandardMaterial color="#f0d8b8" roughness={.75} /></mesh>
+    )}
     <Sign title={SHOP.name} subtitle={SHOP.english} at={[0, 2.85, .1]} yaw={0} near={16} />
     {(highQuality || lanternLit > .05) && <pointLight position={[0, 2.1, .4]} color="#f6d4a0" intensity={4 + 6 * lanternLit} distance={7} decay={2} />}
   </group>;
