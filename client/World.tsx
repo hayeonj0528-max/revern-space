@@ -1242,13 +1242,10 @@ export const World = memo(function World({ reducedMotion, highQuality, day }: { 
     {([[16.5, -8], [16.5, 2], [16.5, 10]] as const).map(([hx, hz], i) =>
       <HorongPole key={`spa-lamp-${hx}-${hz}`} at={[hx, 0, hz]} lit={lanternLit} phase={2.1 + i * .7} reducedMotion={reducedMotion} highQuality={highQuality} street />
     )}
-    {/* Yoga approach street lamps — light the east mouth, keep the mat hall clear. */}
-    {([[-16.5, -8], [-16.5, 0], [-16.5, 8], [-21.5, -5], [-21.5, 5]] as const).map(([hx, hz], i) =>
+    {/* Yoga approach street lamps — courtyard side only, not inside the pavilion. */}
+    {([[-16.5, -8], [-16.5, 0], [-16.5, 8]] as const).map(([hx, hz], i) =>
       <HorongPole key={`yoga-lamp-${hx}-${hz}`} at={[hx, 0, hz]} lit={lanternLit} phase={3.4 + i * .7} reducedMotion={reducedMotion} highQuality={highQuality} street />
     )}
-    <pointLight position={[-22, 3.1, 0]} color="#ffd6a0" intensity={8 * lanternLit} distance={16} decay={1.5} />
-    <pointLight position={[-19, 2.7, -6]} color="#f8c284" intensity={5 * lanternLit} distance={12} decay={1.5} />
-    <pointLight position={[-19, 2.7, 6]} color="#f8c284" intensity={5 * lanternLit} distance={12} decay={1.5} />
     <Sign title="REVERN" subtitle="잠시, 나에게 돌아오는 시간" at={[9, 1.7, 21]} yaw={-.35} />
     <Box at={[9, .7, 21]} size={[.12, 1.4, .12]} material={materials.wood} />
     {[-1, 1].map(side => <group key={side}>
