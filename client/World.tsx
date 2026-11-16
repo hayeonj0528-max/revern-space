@@ -227,13 +227,13 @@ function Pavilion({ id, lit = 0, reducedMotion = false }: { id: Exclude<ZoneId, 
     <Box at={[x, beam, z + d / 2]} size={[w + .9, .32, .34]} material={materials.wood} />
     <Box at={[x - w / 2, beam, z]} size={[.34, .32, d + .9]} material={materials.wood} />
     <Box at={[x + w / 2, beam, z]} size={[.34, .32, d + .9]} material={materials.wood} />
-    {/* Quiet 단청 under closed eaves only — skip tea's open north face. */}
+    {/* Quiet 단청 under eaves — skip tea entirely (no blue/green bands at the entrance). */}
     {id !== 'tea' && <>
       <Box at={[x, beam - .2, z - d / 2 + .02]} size={[w + .7, .08, .1]} material={materials.dancheongBlue} shadow={false} />
       <Box at={[x, beam - .28, z - d / 2 + .02]} size={[w + .7, .05, .08]} material={materials.dancheongGreen} shadow={false} />
+      <Box at={[x, beam - .2, z + d / 2 - .02]} size={[w + .7, .08, .1]} material={materials.dancheongBlue} shadow={false} />
+      <Box at={[x, beam - .28, z + d / 2 - .02]} size={[w + .7, .05, .08]} material={materials.dancheongGreen} shadow={false} />
     </>}
-    <Box at={[x, beam - .2, z + d / 2 - .02]} size={[w + .7, .08, .1]} material={materials.dancheongBlue} shadow={false} />
-    <Box at={[x, beam - .28, z + d / 2 - .02]} size={[w + .7, .05, .08]} material={materials.dancheongGreen} shadow={false} />
     {Array.from({ length: Math.ceil(w / 1.15) }, (_, i) => {
       // Tea: keep rafters behind the open doorway — matches the inset giwa cut.
       const rafterD = shallowRoof ? Math.max(4, d - teaInset) : d + 3.2;
@@ -331,9 +331,6 @@ function EntranceGate() {
     </group>)}
     {/* Single 인방 under the roof — not double shrine lintels */}
     <Box at={[0, 3.95, 0]} size={[9.9, .3, .42]} material={materials.wood} />
-    <Box at={[0, 3.72, .14]} size={[9.5, .08, .12]} material={materials.dancheongBlue} shadow={false} />
-    <Box at={[0, 3.62, .12]} size={[9.5, .05, .1]} material={materials.dancheongGreen} shadow={false} />
-    <Box at={[0, 3.54, .1]} size={[9.5, .04, .08]} material={materials.dancheongRed} shadow={false} />
     {/* 문지방 + 창호 판문 — slides open; tea 분합문 sits clear behind at the pavilion face. */}
     <Box at={[0, .14, 0]} size={[8.9, .22, .6]} material={materials.stone} />
     <SlidingHanjiPair
