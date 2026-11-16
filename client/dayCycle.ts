@@ -41,9 +41,9 @@ function mixHex(a: string, b: string, t: number) {
 }
 
 /** Set to a clock hour (e.g. 12) to preview that time of day; `null` follows the real local clock. */
-export const PREVIEW_HOUR: number | null = 12;
+export const PREVIEW_HOUR: number | null = null;
 
-/** Local-clock day/night blend. Dusk begins ~16:00 so evening (e.g. 17:41) already feels like nightfall. */
+/** Local-clock day/night blend. Soft dusk through the evening; full night after ~20:30. */
 export function dayCycle(date = new Date()): DayCycle {
   if (PREVIEW_HOUR != null) {
     date = new Date(date);
@@ -51,8 +51,9 @@ export function dayCycle(date = new Date()): DayCycle {
   }
   const h = date.getHours() + date.getMinutes() / 60 + date.getSeconds() / 3600;
   let nightness = 0;
-  if (h >= 16 && h < 19.5) nightness = smooth(16, 19.5, h);
-  else if (h >= 19.5 || h < 5.5) nightness = 1;
+  // 16:30→20:30 gradual dusk (18:45 ≈ soft evening, not midnight); night after 20:30.
+  if (h >= 16.5 && h < 20.5) nightness = smooth(16.5, 20.5, h);
+  else if (h >= 20.5 || h < 5.5) nightness = 1;
   else if (h >= 5.5 && h < 7.5) nightness = 1 - smooth(5.5, 7.5, h);
 
   const evening = h >= 12 || h < 4;

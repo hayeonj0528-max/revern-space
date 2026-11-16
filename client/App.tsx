@@ -113,6 +113,8 @@ export function App() {
   }, [meditating]);
   useEffect(() => { if (meditationElapsed >= 600) setMeditating(false); }, [meditationElapsed]);
   useEffect(() => { if (self?.activity !== 'lying' || space.connection !== 'connected') { setMeditating(false); if (self?.activity !== 'lying') { setMeditationStarted(false); setMeditationElapsed(0); audio.pauseMusic(true); } } }, [self?.activity, space.connection]);
+  // Tube rest faces the ceiling — drop into first person when lying down.
+  useEffect(() => { if (self?.activity === 'lying') setFirstPerson(true); }, [self?.activity]);
   useEffect(() => { if (!space.error || space.connection !== 'connected') return; const timer = setTimeout(() => network.clearError(), 5500); return () => clearTimeout(timer); }, [space.error, space.connection]);
   const enter = async (e: React.FormEvent) => { e.preventDefault(); if (!nickname.trim()) return; const ok = await audio.unlock(); setAudioReady(ok); audio.setZone('courtyard'); network.join(nickname.trim(), appearance); };
   const toggleView = () => { setFirstPerson(v => !v); (document.activeElement as HTMLElement)?.blur(); };
@@ -130,12 +132,12 @@ export function App() {
     yoga: '넉넉한 매트 위에서 빈 매트 가까이에서 앉으면 다양한 요가 동작에 함께할 수 있어요.',
     spa: '따로 마련된 온탕과 냉탕의 계단으로 걸어 들어가 몸을 쉬게 하세요. 곁의 목재 문은 핀란드 사우나로 연결됩니다.',
     sauna: '목재 단 벤치와 돌 히터가 있는 핀란드식 공간. 벤치에 앉아 쉬거나 돌 위에 물을 부어 부드러운 증기를 만들어 보세요.',
-    floating: '낮은 빛이 비치는 물 위에 누워, 잔잔한 클래식 선율과 함께 편안하게 쉬어보세요.',
+    floating: '물 위에 누워 클래식을 들으며, 나에게 묻는 100문 100답으로 천천히 쉬어보세요. 답은 누구에게도 보이지 않아요.',
     tea: '정원이 내다보이는 자리에 앉아, 따뜻한 차를 따르고 음미하세요.',
     campfire: '장작불 곁 통나무에 앉아 마시멜로를 굽거나, 적은 내용은 누구에게도 보이지 않는 고민을 불에 남겨 두세요.',
     onsen: '대나무길을 따라 들어가면 도착하는 숲속 탕. ‘노천탕으로 가기’를 누르면 길을 따라 천천히 걸어가 따뜻한 물에 입수합니다.'
   };
-  return <main className={`${joined ? 'entered' : 'entrance'} ${joined && (zone === 'floating' || day.uiNight) ? 'night' : ''} ${reducedMotion ? 'reduced-motion' : ''} ${self?.activity === 'yoga' ? 'yoga-active' : ''} ${self?.activity === 'sauna' ? 'sauna-active' : ''} ${zone === 'sauna' ? 'sauna-room' : ''}`}>
+  return <main className={`${joined ? 'entered' : 'entrance'} ${joined && day.uiNight ? 'night' : ''} ${reducedMotion ? 'reduced-motion' : ''} ${self?.activity === 'yoga' ? 'yoga-active' : ''} ${self?.activity === 'sauna' ? 'sauna-active' : ''} ${zone === 'sauna' ? 'sauna-room' : ''}`}>
     <audio ref={audio.bindMusic} data-revern-music="floating" src={FLOATING_MUSIC.src} preload="none" loop />
     <audio ref={audio.bindSpaMusic} data-revern-spa-music="spa" src={softTrack.src} preload="none" loop />
     <div className="scene" aria-label="REVERN 한옥 웰니스 3D 공간"><Scene firstPerson={firstPerson} reducedMotion={reducedMotion} highQuality={highQuality} joined={joined} hideNames={meditating || self?.activity === 'yoga' || self?.activity === 'sauna'} day={day} onReady={onReady} onStats={onStats} /></div>

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { MEDITATION, SLOTS, TEA_BOOKS, TEA_LIBRARY, TEA_QUOTES, TEAS, ZONES, type TeaId, teaById } from '../shared/world';
 import { SHOP } from '../shared/shop';
 import { audio } from './audio';
+import { FloatingReflection } from './FloatingReflection';
 import { guide } from './guide';
 import { FLOATING_MUSIC } from './music';
 import { network, useSpace } from './network';
@@ -16,6 +17,10 @@ export function RestInteraction({ meditation, onOpenMap, musicError, onEnableMus
   const [bookId, setBookId] = useState<string | null>(null);
   const [page, setPage] = useState(0);
   const [quote, setQuote] = useState('');
+  const [reflectionSession, setReflectionSession] = useState(0);
+  useEffect(() => {
+    if (meditation.started) setReflectionSession(s => s + 1);
+  }, [meditation.started]);
   if (!self) return null;
   const zone = self.zone, connected = connection === 'connected';
   if (zone === 'courtyard') {
@@ -63,17 +68,21 @@ export function RestInteraction({ meditation, onOpenMap, musicError, onEnableMus
   if (zone === 'floating') {
     const stage = Math.min(4, Math.floor(meditation.elapsed / 120));
     const elapsed = `${Math.floor(meditation.elapsed / 60).toString().padStart(2, '0')}:${Math.floor(meditation.elapsed % 60).toString().padStart(2, '0')}`;
-    return <RoomHud label={self.slot ? '플로팅 휴식 중' : '플로팅 홀 체험'} className="floating-hud">
-      <div className="hud-main"><span className="hud-status">{self.slot ? '튜브 위에서 쉬는 중' : pickedSlot ? `${slots.findIndex(slot => slot.id === pickedSlot) + 1}번 튜브 선택됨` : '빈 튜브에서 쉬어가세요'}</span>
+    const reflecting = !!self.slot && meditation.started;
+    return <>
+      <FloatingReflection active={reflecting} playing={meditation.playing} sessionKey={reflectionSession} />
+      <RoomHud label={self.slot ? '플로팅 휴식 중' : '플로팅 홀 체험'} className="floating-hud">
+      <div className="hud-main"><span className="hud-status">{self.slot ? (meditation.started ? '음악과 함께 나에게 묻는 중' : '튜브 위에서 쉬는 중') : pickedSlot ? `${slots.findIndex(slot => slot.id === pickedSlot) + 1}번 튜브 선택됨` : '빈 튜브에서 쉬어가세요'}</span>
         <button className={self.slot ? 'secondary' : 'primary'} disabled={!connected || !self.slot && occupied === slots.length} onClick={event => { if (self.slot) meditation.onLeave(); else reserve(); event.currentTarget.blur(); }}>{self.slot ? '내려오기' : '튜브 위에 눕기'}</button>
       </div>
       {!self.slot ? <div className="hud-controls">{slotMenu}</div> : <>
         <div className="hud-controls"><button className="primary" disabled={!connected || meditation.elapsed >= 600} onClick={event => { meditation.onToggle(); event.currentTarget.blur(); }}>{meditation.playing ? '일시정지' : meditation.started ? meditation.elapsed >= 600 ? '휴식 완료' : '음악 이어듣기' : '클래식 듣기'}</button>{meditation.started && <button className="secondary hud-icon" aria-label="음악 종료" title="음악 종료" onClick={meditation.onEnd}><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><rect x="1" y="1" width="10" height="10" rx="1" fill="currentColor" /></svg></button>}</div>
         {meditation.started && <div className="hud-progress" role="progressbar" aria-label="개인 명상 진행" aria-valuemin={0} aria-valuemax={600} aria-valuenow={Math.floor(meditation.elapsed)} aria-valuetext={`${elapsed}, ${MEDITATION[stage].title}`}><i style={{ width: `${meditation.elapsed / 6}%` }} /><span>{elapsed} / 10:00</span></div>}
-        <HudMenu label="휴식 안내"><span className="hud-menu-title">{meditation.started ? MEDITATION[stage].title : '나만의 10분'}</span>{meditation.subtitles && <p>{meditation.started ? MEDITATION[stage].text : '잔잔한 피아노와 함께 편안히 쉬어가세요.'}</p>}<small>{FLOATING_MUSIC.koreanTitle} · 에릭 사티<br /><a href={FLOATING_MUSIC.performerUrl} target="_blank" rel="noreferrer">{FLOATING_MUSIC.performer}</a> · <a href={FLOATING_MUSIC.licenseUrl} target="_blank" rel="noreferrer">{FLOATING_MUSIC.license}</a></small></HudMenu>
+        <HudMenu label="휴식 안내"><span className="hud-menu-title">{meditation.started ? MEDITATION[stage].title : '나만의 10분'}</span>{meditation.subtitles && <p>{meditation.started ? MEDITATION[stage].text : '잔잔한 피아노와 함께, 나에게 묻는 질문으로 편안히 쉬어가세요.'}</p>}<small>{FLOATING_MUSIC.koreanTitle} · 에릭 사티<br /><a href={FLOATING_MUSIC.performerUrl} target="_blank" rel="noreferrer">{FLOATING_MUSIC.performer}</a> · <a href={FLOATING_MUSIC.licenseUrl} target="_blank" rel="noreferrer">{FLOATING_MUSIC.license}</a></small></HudMenu>
       </>}
       {meditation.error && <p className="hud-error" role="alert">{meditation.error}</p>}
-    </RoomHud>;
+    </RoomHud>
+    </>;
   }
   const busy = self.activity === 'pouring' || self.activity === 'drinking';
   const teaName = teaById(tea)?.name ?? '차';

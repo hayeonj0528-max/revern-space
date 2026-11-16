@@ -174,7 +174,8 @@ COLLIDERS.push({ x: 61.5, z: 0, w: 3.8, d: 20, height: .75 }, { x: SAUNA.heater[
 COLLIDERS.push({ x: 34.5, z: 5, w: 23, d: .35, height: 4.8 });
 COLLIDERS.push({ x: -4.05, z: -6, w: 4.9, d: 8, height: .1 });
 COLLIDERS.push({ x: 4.05, z: -6, w: 4.9, d: 8, height: .1 });
-for (const side of [-1, 1]) { COLLIDERS.push({ x: side * 5.5, z: 26, w: .5, d: .5, height: 3.5 }); COLLIDERS.push({ x: side * 10, z: 26, w: 8, d: .5, height: 1 }); }
+// Gate posts / side walls — match EntranceGate at z=17 (courtyard approach, clear of tea doors).
+for (const side of [-1, 1]) { COLLIDERS.push({ x: side * 5.5, z: 17, w: .5, d: .5, height: 3.5 }); COLLIDERS.push({ x: side * 10, z: 17, w: 8, d: .5, height: 1 }); }
 
 // Campfire: rim open wide toward courtyard (SE) so approach doesn't chicane/bounce.
 {
@@ -187,7 +188,7 @@ for (const side of [-1, 1]) { COLLIDERS.push({ x: side * 5.5, z: 26, w: .5, d: .
   COLLIDERS.push({ x: x - 4, z: z - d / 2, w: w - 8, d: .35, height: .55 });
   COLLIDERS.push({ x: -24, z: 20, w: 1.7, d: 1.7, height: .9 });
 }
-// Onsen clearing: open bath with low rim; tall screens sit on the left/right edges.
+// Onsen clearing: open bath with low rim — no side walls so hammocks stay reachable.
 {
   const { center: [x, z], size: [w, d] } = ZONES.onsen;
   const southOpen = 9;
@@ -195,9 +196,8 @@ for (const side of [-1, 1]) { COLLIDERS.push({ x: side * 5.5, z: 26, w: .5, d: .
   // Keep the east–west path (z≈16) and the north apron to the stairs fully clear.
   const gapLo = pathZ - 2.6, gapHi = pathZ + 4.2;
   const westX = x - w / 2, zoneLo = z - d / 2, zoneHi = z + d / 2;
-  // Soft outer zone edges (not across the bath itself).
-  COLLIDERS.push({ x: x + w / 2, z, w: .35, d, height: .55 });
-  COLLIDERS.push({ x, z: zoneHi, w, d: .35, height: .55 });
+  // Soft outer edges only on north / south corners — leave east–west open for hammocks.
+  COLLIDERS.push({ x, z: zoneHi, w: w * .55, d: .35, height: .55 });
   if (gapLo > zoneLo + .4) COLLIDERS.push({ x: westX, z: (zoneLo + gapLo) / 2, w: .35, d: gapLo - zoneLo, height: .55 });
   if (zoneHi > gapHi + .4) COLLIDERS.push({ x: westX, z: (gapHi + zoneHi) / 2, w: .35, d: zoneHi - gapHi, height: .55 });
   COLLIDERS.push({ x: x - (w + southOpen) / 4, z: zoneLo, w: (w - southOpen) / 2, d: .35, height: .55 });
@@ -209,8 +209,6 @@ for (const side of [-1, 1]) { COLLIDERS.push({ x: side * 5.5, z: 26, w: .5, d: .
   const stairW = 4.2;
   const side = (ONSEN.w - stairW) / 2;
   for (const sign of [-1, 1]) COLLIDERS.push({ x: ONSEN.x + sign * (stairW / 2 + side / 2), z: ONSEN.z - ONSEN.d / 2, w: side, d: .3, height: .22 });
-  // Side screens only — nothing spanning across the bath.
-  for (const sign of [-1, 1]) COLLIDERS.push({ x: ONSEN.x + sign * 7.15, z: ONSEN.z + .6, w: .5, d: 8.8, height: 2.1 });
 }
 
 // Courtyard snack stall — south of onsen approach (yaw 0 → counter along X)
@@ -244,9 +242,9 @@ export function zoneAt(x: number, z: number): ZoneId {
   return ZONE_IDS.find(id => { if (id === 'courtyard') return false; const r = ZONES[id]; return Math.abs(x - r.center[0]) <= r.size[0] / 2 + .5 && Math.abs(z - r.center[1]) <= r.size[1] / 2 + .5; }) ?? 'courtyard';
 }
 export const MEDITATION = [
-  { title: '고요한 시작', text: '편안한 자세로 물 위에 기대어 보세요. 잔잔한 피아노 선율과 함께 잠시 쉬어갑니다.' },
-  { title: '느린 호흡', text: '편안한 만큼만 천천히 숨을 쉬어 보세요. 선율이 흐르는 동안 서두를 일은 없어요.' },
-  { title: '긴장 내려놓기', text: '어깨와 손끝의 힘을 가볍게 내려놓아 보세요. 물의 잔잔함에 몸을 맡겨도 좋아요.' },
-  { title: '편안한 머무름', text: '무언가를 떠올리려 애쓰지 않아도 괜찮아요. 음악을 들으며 편안하게 머물러 보세요.' },
-  { title: '천천히 돌아오기', text: '주변의 빛과 물소리를 천천히 느껴 보세요. 준비가 되면 나의 속도로 돌아옵니다.' }
+  { title: '고요한 시작', text: '물 위에 기대어 피아노를 들으며, 천천히 나에게 묻는 질문에 머물러 보세요.' },
+  { title: '느린 호흡', text: '숨을 고르며 질문을 읽어도 좋아요. 답은 마음속에만 두어도, 짧게 적어도 괜찮아요.' },
+  { title: '긴장 내려놓기', text: '어깨의 힘을 풀고, 떠오르는 대로 솔직하게 답해 보세요. 틀린 답은 없어요.' },
+  { title: '편안한 머무름', text: '질문이 바뀌어도 서두르지 마세요. 음악이 흐르는 동안 나만의 100문 100답입니다.' },
+  { title: '천천히 돌아오기', text: '빛과 물소리를 느끼며 돌아옵니다. 남긴 마음은 누구에게도 보이지 않아요.' }
 ];

@@ -22,7 +22,7 @@ class SceneBoundary extends Component<{ children: ReactNode }, { error: string }
 function Controller({ firstPerson, reducedMotion, joined, day, onReady, onStats }: { firstPerson: boolean; reducedMotion: boolean; joined: boolean; day: DayCycle; onReady: () => void; onStats: (fps: number) => void }) {
   const { gl, camera, scene } = useThree();
   const keys = useRef(new Set<string>()); const lastSnapshot = useRef<object | null>(null); const lastId = useRef<string | null>(null);
-  const lastSend = useRef(0), lastInput = useRef(''), frames = useRef(0), elapsed = useRef(0), lastSlot = useRef<string | null>(null);
+  const lastSend = useRef(0), lastInput = useRef(''), frames = useRef(0), elapsed = useRef(0), lastSlot = useRef<string | null>(null), wasLying = useRef(false);
   const target = useRef(new THREE.Vector3()), desired = useRef(new THREE.Vector3()), ray = useMemoRay();
   const correction = useRef(new THREE.Vector2());
   const boxes = useRef([...COLLIDERS.filter(c => c.height > 1).map(c => new THREE.Box3(new THREE.Vector3(c.x - c.w / 2 - .18, 0, c.z - c.d / 2 - .18), new THREE.Vector3(c.x + c.w / 2 + .18, c.height, c.z + c.d / 2 + .18))), new THREE.Box3(new THREE.Vector3(-7.3, 3.28, 22.7), new THREE.Vector3(7.3, 5.8, 29.3))]);
@@ -46,7 +46,8 @@ function Controller({ firstPerson, reducedMotion, joined, day, onReady, onStats 
       const turn = -dx * .0035;
       motion.yaw = THREE.MathUtils.euclideanModulo(motion.yaw + turn + Math.PI, Math.PI * 2) - Math.PI;
       if (steering.current.active) steering.current.yaw += turn;
-      motion.pitch = THREE.MathUtils.clamp(motion.pitch + dy * .003, -.95, .9);
+      const pitchMin = motion.firstPerson && document.body.dataset.lying === '1' ? -1.35 : -.95;
+      motion.pitch = THREE.MathUtils.clamp(motion.pitch + dy * .003, pitchMin, .9);
       if (dx || dy) { manualLookUntil.current = performance.now() + 750; autoLook.current = false; }
       px = e.clientX; py = e.clientY;
     };
@@ -122,15 +123,30 @@ function Controller({ firstPerson, reducedMotion, joined, day, onReady, onStats 
     if (joined && (performance.now() - lastSend.current > 50 || input !== lastInput.current)) { network.send({ type: 'move', dx, dz, yaw: motion.facingYaw }); lastSend.current = performance.now(); lastInput.current = input; }
     motion.firstPerson = firstPerson;
     const lying = p?.activity === 'lying'; const hammock = !!p?.slot?.startsWith('hammock'); const sitting = p?.slot?.startsWith('tea') || p?.slot?.startsWith('spa') || p?.slot?.startsWith('sauna') || p?.slot?.startsWith('camp'); const yoga = p?.activity === 'yoga', saunaRest = p?.activity === 'sauna', teaRest = p?.zone === 'tea' && (!!p.slot || p.activity === 'pouring' || p.activity === 'drinking'), campRest = p?.zone === 'campfire' && !!p.slot;
-    const headY = groundHeightAt(motion.position.x, motion.position.z) + (hammock ? 1.12 : lying ? .98 : sitting ? 1.28 : yoga ? 1.4 : 1.63);
-    target.current.set(motion.position.x, headY, motion.position.z + (hammock ? 0 : lying ? -.5 : 0));
+    document.body.dataset.lying = lying ? '1' : '0';
+    // Face the pavilion ceiling when settling onto a tube.
+    if (lying && !wasLying.current) motion.pitch = -1.05;
+    wasLying.current = !!lying;
+    const headY = groundHeightAt(motion.position.x, motion.position.z) + (hammock ? 1.12 : lying ? .55 : sitting ? 1.28 : yoga ? 1.4 : 1.63);
+    target.current.set(motion.position.x, headY, motion.position.z);
     let distance = 5.2;
     if (firstPerson) {
       desired.current.copy(target.current);
       const approach = resetCamera || reducedMotion ? 1 : 1 - Math.exp(-dt * 14); camera.position.lerp(desired.current, approach);
-      camera.lookAt(camera.position.x - Math.sin(motion.yaw) * Math.cos(motion.pitch), camera.position.y - Math.sin(motion.pitch) + (lying ? .7 : 0), camera.position.z - Math.cos(motion.yaw) * Math.cos(motion.pitch));
+      if (lying) {
+        // Supine: look mostly upward at the roof; yaw still lets you glance around a little.
+        const lift = 3.4 - motion.pitch * 1.1;
+        const spread = Math.max(.08, Math.cos(Math.min(0, motion.pitch)));
+        camera.lookAt(
+          camera.position.x - Math.sin(motion.yaw) * spread * .55,
+          camera.position.y + lift,
+          camera.position.z - Math.cos(motion.yaw) * spread * .55
+        );
+      } else {
+        camera.lookAt(camera.position.x - Math.sin(motion.yaw) * Math.cos(motion.pitch), camera.position.y - Math.sin(motion.pitch), camera.position.z - Math.cos(motion.yaw) * Math.cos(motion.pitch));
+      }
     } else {
-      desired.current.set(Math.sin(motion.yaw) * (hammock ? 4.4 : campRest ? 3.6 : 5.2), (hammock ? 1.45 : campRest ? 1.55 : 1.9) + motion.pitch * 2.2, Math.cos(motion.yaw) * (hammock ? 4.4 : campRest ? 3.6 : 5.2)).add(target.current);
+      desired.current.set(Math.sin(motion.yaw) * (hammock ? 4.4 : lying ? 2.4 : campRest ? 3.6 : 5.2), (hammock ? 1.45 : lying ? 3.4 : campRest ? 1.55 : 1.9) + motion.pitch * 2.2, Math.cos(motion.yaw) * (hammock ? 4.4 : lying ? 2.4 : campRest ? 3.6 : 5.2)).add(target.current);
       if (yoga || saunaRest || teaRest || campRest) { const shoulder = teaRest ? -1.7 : campRest ? 0 : 1.7; desired.current.x += Math.cos(motion.yaw) * shoulder; desired.current.z -= Math.sin(motion.yaw) * shoulder; }
       offset.current.copy(desired.current).sub(target.current).normalize();
       ray.current.set(target.current, offset.current);
@@ -144,16 +160,16 @@ function Controller({ firstPerson, reducedMotion, joined, day, onReady, onStats 
       if (campRest) target.current.y -= .35;
       camera.lookAt(target.current);
     }
-    motion.cameraDistance = firstPerson ? 0 : camera.position.distanceTo(camDist.current.set(motion.position.x, headY, motion.position.z + (lying ? -.5 : 0)));
+    motion.cameraDistance = firstPerson ? 0 : camera.position.distanceTo(camDist.current.set(motion.position.x, headY, motion.position.z));
     {
-      const floating = p?.zone === 'floating';
-      if (scene.background instanceof THREE.Color) scene.background.lerp(skyColor.current.set(floating ? '#0c161c' : day.background), dt * 2);
+      // Whole garden follows the day cycle — floating no longer forces its own night.
+      if (scene.background instanceof THREE.Color) scene.background.lerp(skyColor.current.set(day.background), dt * 2);
       if (scene.fog instanceof THREE.Fog) {
-        scene.fog.color.lerp(fogColor.current.set(floating ? '#162c27' : day.fog), dt * 2);
-        scene.fog.near = floating ? 22 : 40 + day.nightness * 20;
-        scene.fog.far = floating ? 90 : 130 + day.nightness * 35;
+        scene.fog.color.lerp(fogColor.current.set(day.fog), dt * 2);
+        scene.fog.near = 40 + day.nightness * 20;
+        scene.fog.far = 130 + day.nightness * 35;
       }
-      gl.toneMappingExposure += ((floating ? .78 : day.exposure) - gl.toneMappingExposure) * Math.min(1, dt * 2);
+      gl.toneMappingExposure += (day.exposure - gl.toneMappingExposure) * Math.min(1, dt * 2);
     }
     if (!ready.current) { ready.current = true; onReady(); }
     frames.current++; elapsed.current += frameDt; if (elapsed.current > 2) { onStats(Math.round(frames.current / elapsed.current)); elapsed.current = 0; frames.current = 0; }
