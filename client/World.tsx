@@ -16,13 +16,13 @@ function Box({ at, size, material = materials.wood, color, shadow = true }: { at
   return <mesh position={at} castShadow={shadow} receiveShadow material={color ? undefined : material}><boxGeometry args={size} />{color && <meshStandardMaterial color={color} roughness={.85} />}</mesh>;
 }
 function roofGeometry(w: number, d: number, lift = 0, opts?: { shallow?: boolean; /** No eave past this local-Z face (−1 = −Z / open north). */ flushFace?: -1 | 1 }) {
-  // Korean 팔작지붕. Tea uses flushFace so the courtyard front has no hanging 처마.
+  // Korean 팔작지붕 with stronger 처마 tip lift so the silhouette reads as giwa, not a quiet hip roof.
   const vertices: number[] = [], uvs: number[] = [], indices: number[] = []; const nx = 36, nz = 36;
   const shallow = !!opts?.shallow;
   const flush = opts?.flushFace;
-  const sidePad = shallow ? 1.2 : 4.6;
+  const sidePad = shallow ? 1.35 : 5.1;
   const ew = w + sidePad, ed = d + (flush != null ? sidePad : sidePad);
-  const hipDrop = shallow ? 2.4 : 3.7, cornerLift = shallow ? 0 : 2.05;
+  const hipDrop = shallow ? 2.55 : 4.05, cornerLift = shallow ? .55 : 2.85;
   for (let j = 0; j <= nz; j++) for (let i = 0; i <= nx; i++) {
     let x = (i / nx - .5) * ew, z = (j / nz - .5) * ed;
     // Pull the open-front edge back flush with the wall line — no overhang.
@@ -30,9 +30,10 @@ function roofGeometry(w: number, d: number, lift = 0, opts?: { shallow?: boolean
     if (flush === 1) z = Math.min(z, d / 2);
     const ax = Math.abs(x) / (ew / 2), az = Math.abs(z) / Math.max(ed / 2, .001);
     const hip = Math.max(az, Math.max(0, (ax - .4) / .6));
-    const corner = flush != null ? 0 : Math.pow(Math.min(1, ax) * Math.min(1, az), 1.7);
-    const y = 7.85 + lift - hipDrop * hip + cornerLift * Math.pow(corner, 1.05) + .12 * Math.pow(hip, 5);
-    vertices.push(x, y, z); uvs.push(i / nx * w / 4, j / nz * d / 5);
+    const corner = flush != null ? Math.pow(Math.min(1, ax) * Math.min(1, az * .35), 1.9) : Math.pow(Math.min(1, ax) * Math.min(1, az), 1.55);
+    const sag = .18 * Math.sin(ax * Math.PI) * Math.sin(az * Math.PI);
+    const y = 7.85 + lift - hipDrop * hip + cornerLift * Math.pow(corner, 1.02) + .12 * Math.pow(hip, 5) - sag;
+    vertices.push(x, y, z); uvs.push(i / nx * w / 3.2, j / nz * d / 4);
     if (i < nx && j < nz) { const a = j * (nx + 1) + i; indices.push(a, a + nx + 1, a + 1, a + 1, a + nx + 1, a + nx + 2); }
   }
   const geometry = new THREE.BufferGeometry(); geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3)); geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2)); geometry.setIndex(indices); geometry.computeVertexNormals(); return geometry;
@@ -49,11 +50,11 @@ function HanjiDoorPanel({ width, height }: { width: number; height: number }) {
   useEffect(() => () => map.dispose(), [map]);
   return <group>
     <mesh position={[0, 0, .01]}><planeGeometry args={[width - .1, height - .1]} /><meshStandardMaterial map={map} roughness={.88} side={THREE.DoubleSide} /></mesh>
-    <Box at={[0, height / 2 - .04, 0]} size={[width, .08, .08]} material={materials.darkWood} />
-    <Box at={[0, -height / 2 + .04, 0]} size={[width, .08, .08]} material={materials.darkWood} />
-    <Box at={[-width / 2 + .04, 0, 0]} size={[.08, height, .08]} material={materials.darkWood} />
-    <Box at={[width / 2 - .04, 0, 0]} size={[.08, height, .08]} material={materials.darkWood} />
-    <Box at={[0, 0, 0]} size={[width - .12, .06, .06]} material={materials.darkWood} />
+    <Box at={[0, height / 2 - .04, 0]} size={[width, .08, .08]} material={materials.wood} />
+    <Box at={[0, -height / 2 + .04, 0]} size={[width, .08, .08]} material={materials.wood} />
+    <Box at={[-width / 2 + .04, 0, 0]} size={[.08, height, .08]} material={materials.wood} />
+    <Box at={[width / 2 - .04, 0, 0]} size={[.08, height, .08]} material={materials.wood} />
+    <Box at={[0, 0, 0]} size={[width - .12, .06, .06]} material={materials.wood} />
   </group>;
 }
 /** Tall 한지 분합문 panels on a pavilion wall. */
@@ -105,7 +106,7 @@ function Sign({ title, subtitle, at, yaw = 0, dark = false, near = 12, hideClose
   return <mesh ref={mesh} position={at} rotation={[0, yaw, 0]} visible={false}><planeGeometry args={[wide ? 4.6 : 3.6, 1.2]} /><meshStandardMaterial map={texture} roughness={.8} side={THREE.FrontSide} transparent opacity={0} depthWrite={false} /></mesh>;
 }
 function Pavilion({ id, lit = 0, reducedMotion = false }: { id: Exclude<ZoneId, 'courtyard' | 'campfire' | 'onsen' | 'sauna'>; lit?: number; reducedMotion?: boolean }) {
-  // Quiet spa-retreat timber — same vocabulary as the floating hall, no palace ornament.
+  // Hanok pavilion: 황토 walls, pine posts, 청기와 roof, quiet 단청 under the eaves.
   const r = ZONES[id], [x, z] = r.center, [w, d] = r.size;
   // Yoga and tea need more vertical air for standing poses / quiet reading.
   const lift = id === 'yoga' || id === 'tea' ? 2.2 : 0;
@@ -114,12 +115,11 @@ function Pavilion({ id, lit = 0, reducedMotion = false }: { id: Exclude<ZoneId, 
   const geo = useMemo(() => roofGeometry(w, d, lift, shallowRoof ? { shallow: true, flushFace: -1 } : undefined), [w, d, lift, shallowRoof]);
   const walls = COLLIDERS.filter(c => c.height > 1 && Math.abs(c.x - x) <= w / 2 + .1 && Math.abs(c.z - z) <= d / 2 + .1 && (c.w > 1 || c.d > 1) && c.z !== 5);
   const alongX = id === 'floating' || id === 'tea'; const openSide = id === 'floating' ? 1 : id === 'tea' ? -1 : id === 'yoga' ? 1 : -1;
-  const dark = id === 'floating';
   const beam = 5.02 + lift;
   const postH = 4.7 + lift;
-  const cozy = id === 'yoga' || id === 'tea' || id === 'spa';
-  const bright = id === 'tea' || id === 'yoga';
-  // Gentle indoor wash — tea & yoga run brighter; spa stays softer.
+  const cozy = id === 'yoga' || id === 'tea' || id === 'spa' || id === 'floating';
+  const bright = id === 'tea' || id === 'yoga' || id === 'floating';
+  // Gentle indoor wash — tea, yoga & floating hall stay bright; spa softer.
   const softLit = cozy ? Math.max(bright ? .85 : .55, (bright ? .7 : .4) + lit * .5) : 0;
   const signAt: [number, number, number] = [alongX ? x + (id === 'tea' ? -w / 4 : w / 4) : x + (w / 2 + .3) * openSide, 3.65, alongX ? z + (d / 2 + .3) * openSide : z - d / 4];
   // Readable from the open approach, not from inside (avoids mirrored nameplates).
@@ -151,15 +151,15 @@ function Pavilion({ id, lit = 0, reducedMotion = false }: { id: Exclude<ZoneId, 
     </>}
     {id === 'spa' ? <SpaFloor /> : <Box at={[x, -.12, z]} size={[w + .6, .32, d + .6]} material={id === 'yoga' || id === 'tea' ? materials.wood : materials.stone} />}
     {walls.map((c, i) => <group key={i}>
-      <Box at={[c.x, 2.4 + lift / 2, c.z]} size={[c.w, 4.8 + lift, c.d]} material={dark ? materials.darkWood : materials.plaster} />
-      <Box at={[c.x, .65, c.z]} size={[c.w + .1, 1.1, c.d + .1]} material={materials.darkWood} />
-      <Box at={[c.x, 2.5 + lift / 2, c.z]} size={[c.w + .12, .12, c.d + .12]} material={materials.darkWood} />
-      {!dark && (id === 'tea' ? <HanjiWall wall={c} center={r.center} lift={lift} /> : <Lattice wall={c} center={r.center} />)}
+      <Box at={[c.x, 2.4 + lift / 2, c.z]} size={[c.w, 4.8 + lift, c.d]} material={materials.plaster} />
+      <Box at={[c.x, .48, c.z]} size={[c.w + .1, .82, c.d + .1]} material={materials.wood} />
+      <Box at={[c.x, 2.5 + lift / 2, c.z]} size={[c.w + .12, .12, c.d + .12]} material={materials.wood} />
+      {id === 'tea' || id === 'yoga' ? <HanjiWall wall={c} center={r.center} lift={lift} /> : <Lattice wall={c} center={r.center} />}
     </group>)}
     {postTs.map(t => <group key={t} position={[alongX ? x + w * t : x + w / 2 * openSide, 0, alongX ? z + d / 2 * openSide : z + d * t]}>
       <Box at={[0, .22, 0]} size={[.9, .44, .9]} material={materials.stone} />
-      <Box at={[0, postH / 2 + .2, 0]} size={[.4, postH, .4]} material={materials.darkWood} />
-      <Box at={[0, beam - .17, 0]} size={alongX ? [1.55, .24, .72] : [.72, .24, 1.55]} material={materials.darkWood} />
+      <Box at={[0, postH / 2 + .2, 0]} size={[.4, postH, .4]} material={materials.wood} />
+      <Box at={[0, beam - .17, 0]} size={alongX ? [1.55, .24, .72] : [.72, .24, 1.55]} material={materials.wood} />
     </group>)}
     {id === 'tea' && ([[-.5, -.25], [.25, .5]] as const).map(([t, t2]) => {
       // Outer bays only — keep the center aisle open to walk in.
@@ -174,10 +174,15 @@ function Pavilion({ id, lit = 0, reducedMotion = false }: { id: Exclude<ZoneId, 
         <HanjiDoorPanel width={panelW} height={3.9} />
       </group>;
     })}
-    <Box at={[x, beam, z - d / 2]} size={[w + .9, .32, .34]} material={materials.darkWood} />
-    <Box at={[x, beam, z + d / 2]} size={[w + .9, .32, .34]} material={materials.darkWood} />
-    <Box at={[x - w / 2, beam, z]} size={[.34, .32, d + .9]} material={materials.darkWood} />
-    <Box at={[x + w / 2, beam, z]} size={[.34, .32, d + .9]} material={materials.darkWood} />
+    <Box at={[x, beam, z - d / 2]} size={[w + .9, .32, .34]} material={materials.wood} />
+    <Box at={[x, beam, z + d / 2]} size={[w + .9, .32, .34]} material={materials.wood} />
+    <Box at={[x - w / 2, beam, z]} size={[.34, .32, d + .9]} material={materials.wood} />
+    <Box at={[x + w / 2, beam, z]} size={[.34, .32, d + .9]} material={materials.wood} />
+    {/* Quiet 단청 band under the eave beam — spa-scale, not palace coverage. */}
+    <Box at={[x, beam - .2, z - d / 2 + .02]} size={[w + .7, .08, .1]} material={materials.dancheongBlue} shadow={false} />
+    <Box at={[x, beam - .28, z - d / 2 + .02]} size={[w + .7, .05, .08]} material={materials.dancheongGreen} shadow={false} />
+    <Box at={[x, beam - .2, z + d / 2 - .02]} size={[w + .7, .08, .1]} material={materials.dancheongBlue} shadow={false} />
+    <Box at={[x, beam - .28, z + d / 2 - .02]} size={[w + .7, .05, .08]} material={materials.dancheongGreen} shadow={false} />
     {Array.from({ length: Math.ceil(w / 1.15) }, (_, i) => {
       // Tea: stop rafters at the open front — no projecting eave over the entrance.
       const rafterD = shallowRoof ? d : d + 3.2;
@@ -185,15 +190,17 @@ function Pavilion({ id, lit = 0, reducedMotion = false }: { id: Exclude<ZoneId, 
       return <Box key={`rafter-${i}`} at={[x - w / 2 + i * 1.15, beam + .3, rafterZ]} size={[.09, .12, rafterD]} material={materials.wood} />;
     })}
     <mesh position={[x, 0, z]} geometry={geo} material={materials.roof} castShadow receiveShadow />
-    <Box at={[x, 7.7 + lift, z]} size={[w * .9, .34, .5]} material={materials.roof} />
-    <Box at={[x, 7.84 + lift, z]} size={[w * .9, .1, .58]} material={materials.roof} />
-    {[-1, 1].map(side => <group key={side} position={[x + side * w * .45, 7.92 + lift, z]}>
+    {/* Stacked 용마루 */}
+    <Box at={[x, 7.62 + lift, z]} size={[w * .92, .28, .42]} material={materials.roof} />
+    <Box at={[x, 7.78 + lift, z]} size={[w * .88, .2, .5]} material={materials.roof} />
+    <Box at={[x, 7.92 + lift, z]} size={[w * .84, .12, .58]} material={materials.roof} />
+    {[-1, 1].map(side => <group key={side} position={[x + side * w * .45, 7.98 + lift, z]}>
       <Box at={[0, 0, 0]} size={[.42, .48, .68]} material={materials.roof} />
       <Box at={[side * .16, .26, 0]} size={[.16, .2, .45]} material={materials.roof} />
+      <Box at={[side * .05, .42, 0]} size={[.1, .14, .22]} material={materials.dancheongRed} shadow={false} />
     </group>)}
-    {!shallowRoof && <group position={[x, 0, z]}><CornerRidges w={w} d={d} lift={lift} /></group>}
-    <Sign title={r.name} subtitle={r.english} at={signAt} yaw={signYaw} dark={dark} />
-    {dark && <Box at={[x, 5.18, z]} size={[w, .16, d]} material={materials.darkWood} />}
+    <group position={[x, 0, z]}><CornerRidges w={w} d={d} lift={lift} short={shallowRoof} /></group>
+    <Sign title={r.name} subtitle={r.english} at={signAt} yaw={signYaw} />
     {cozy && wallWashes.map(s => <WallWash key={`wash-${s.key}`} at={s.at} yaw={s.yaw} width={s.width} lit={softLit} />)}
     {cozy && softLit > .05 && <>
       <CoveStrip at={[x, beam - .22, z - d / 2 + .2]} size={[w * .88, .04, .12]} lit={softLit} />
@@ -217,12 +224,6 @@ function Pavilion({ id, lit = 0, reducedMotion = false }: { id: Exclude<ZoneId, 
         })}
       </>}
     </>}
-    {dark && <>
-      <CoveStrip at={[x, beam - .22, z - d / 2 + .25]} size={[w * .82, .04, .1]} lit={.7} />
-      <CoveStrip at={[x, beam - .22, z + d / 2 - .25]} size={[w * .82, .04, .1]} lit={.7} />
-      <pointLight position={[x, beam - 1.4, z]} color="#f2d9a8" intensity={11} distance={22} decay={1.45} />
-      <pointLight position={[x, 2.4, z]} color="#e8c890" intensity={6} distance={16} decay={1.5} />
-    </>}
   </group>;
 }
 function CourtyardBridge({ lanternLit = 0, reducedMotion = false }: { lanternLit?: number; reducedMotion?: boolean }) {
@@ -245,35 +246,51 @@ function CourtyardBridge({ lanternLit = 0, reducedMotion = false }: { lanternLit
     })}
     <Box at={[0, .14, 0]} size={[2.35, .04, 7.6]} color="#b89a78" shadow={false} />
     {[-1, 1].map((side, si) => <group key={side}>
-      <Box at={[side * 1.28, .22, 0]} size={[.1, .12, 7.9]} material={materials.darkWood} />
+      <Box at={[side * 1.28, .22, 0]} size={[.1, .12, 7.9]} material={materials.wood} />
       {Array.from({ length: 9 }, (_, i) => {
         const z = -3.6 + i * .9;
         const arch = Math.sin(((z + 3.9) / 7.8) * Math.PI) * .16;
         return <group key={i}>
-          <Box at={[side * 1.28, .55 + arch, z]} size={[.07, .55, .07]} material={materials.darkWood} />
-          <Box at={[side * 1.28, .85 + arch, z]} size={[.12, .08, .12]} material={materials.darkWood} />
+          <Box at={[side * 1.28, .55 + arch, z]} size={[.07, .55, .07]} material={materials.wood} />
+          <Box at={[side * 1.28, .85 + arch, z]} size={[.12, .08, .12]} material={materials.wood} />
         </group>;
       })}
-      <mesh geometry={rails[si]} material={materials.darkWood} />
+      <mesh geometry={rails[si]} material={materials.wood} />
     </group>)}
-    {[-1, 1].flatMap(side => [-3.35, -.4, 3.35].map((z, i) =>
-      <Lantern key={`${side}-${z}`} at={[side * 1.9, 0, z]} lit={Math.max(lanternLit, .42)} phase={side + i} reducedMotion={reducedMotion} />
+    {[-1, 1].flatMap(side => [-3.35, 3.35].map((z, i) =>
+      <HorongPole key={`${side}-${z}`} at={[side * 2.05, 0, z]} lit={Math.max(lanternLit, .42)} phase={side + i} reducedMotion={reducedMotion} />
     ))}
   </group>;
 }
+/** 한옥 대문 — roofed gatehouse with 창호 panels, not a torii lintel. */
 function EntranceGate() {
-  const geometry = useMemo(() => roofGeometry(9, 2.6), []);
+  const geometry = useMemo(() => roofGeometry(10, 3.4), []);
   return <group position={[0, 0, 26]}>
     {[-1, 1].map(side => <group key={side}>
-      <Box at={[side * 4.6, .28, 0]} size={[1.1, .56, 1.1]} material={materials.stone} />
-      <Box at={[side * 4.6, 2.1, 0]} size={[.46, 3.6, .46]} material={materials.darkWood} />
-      <Box at={[side * 9.5, .55, 0]} size={[7.5, 1.1, .55]} material={materials.plaster} />
-      <Box at={[side * 9.5, 1.15, 0]} size={[7.7, .12, .7]} material={materials.roof} />
+      <Box at={[side * 4.6, .28, 0]} size={[1.25, .56, 1.25]} material={materials.stone} />
+      <Box at={[side * 4.6, 2.2, 0]} size={[.44, 3.8, .44]} material={materials.wood} />
+      <Box at={[side * 4.6, 4.05, 0]} size={[1.1, .22, .7]} material={materials.wood} />
+      {/* Side 담 with plaster and 기와 coping */}
+      <Box at={[side * 9.6, .75, 0]} size={[7.6, 1.5, .58]} material={materials.plaster} />
+      <Box at={[side * 9.6, 1.55, 0]} size={[7.85, .14, .72]} material={materials.roof} />
+      <Box at={[side * 6.15, 1.05, 0]} size={[.3, 2.1, .3]} material={materials.wood} />
+      <Box at={[side * 7.9, 1.05, 0]} size={[.3, 2.1, .3]} material={materials.wood} />
     </group>)}
-    <Box at={[0, 3.9, 0]} size={[10.2, .32, .5]} material={materials.darkWood} />
-    <Box at={[0, 4.15, 0]} size={[10.5, .14, .6]} material={materials.wood} />
-    <mesh position={[0, -1.5, 0]} geometry={geometry} material={materials.roof} castShadow />
-    <Sign title="REVERN" subtitle="나에게 돌아오는 문" at={[0, 2.35, .35]} />
+    {/* Single 인방 under the roof — not double shrine lintels */}
+    <Box at={[0, 3.95, 0]} size={[9.9, .3, .42]} material={materials.wood} />
+    <Box at={[0, 3.72, .14]} size={[9.5, .08, .12]} material={materials.dancheongBlue} shadow={false} />
+    <Box at={[0, 3.62, .12]} size={[9.5, .05, .1]} material={materials.dancheongGreen} shadow={false} />
+    <Box at={[0, 3.54, .1]} size={[9.5, .04, .08]} material={materials.dancheongRed} shadow={false} />
+    {/* 문지방 + 창호 판문 */}
+    <Box at={[0, .14, 0]} size={[8.9, .22, .6]} material={materials.stone} />
+    {[-1.55, 1.55].map(sx => (
+      <group key={sx} position={[sx, 1.95, .04]} rotation={[0, 0, 0]}>
+        <HanjiDoorPanel width={2.85} height={3.55} />
+      </group>
+    ))}
+    <mesh position={[0, -1.25, 0]} geometry={geometry} material={materials.roof} castShadow />
+    <group position={[0, 0, 0]}><CornerRidges w={9.2} d={2.8} lift={0} short /></group>
+    <Sign title="REVERN" subtitle="나에게 돌아오는 문" at={[0, 5.55, .45]} />
   </group>;
 }
 function FloatingReflection({ reducedMotion }: { reducedMotion: boolean }) {
@@ -737,22 +754,21 @@ function BambooGrove() {
         data.push({ x: qx, z: qz, h: 5.2 + rand() * 3.8, lean: (rand() - .5) * .035, phase: rand() * 8, thick: .048 + rand() * .032 });
       }
     };
-    // Bamboo hedges hug the narrower center path — stop before the onsen apron.
-    for (let t = .05; t <= .82; t += .045) {
+    // Lighter path planting — fewer culms so the approach reads as a Korean garden path, not a bamboo tunnel.
+    for (let t = .08; t <= .78; t += .08) {
       const cx = fx + pdx * t, cz = fz + pdz * t;
-      for (const d of [1.9, 2.7, 3.6]) {
-        push(cx + px * d + (rand() - .5) * .05, cz + pz * d, 1, true);
-        push(cx - px * d + (rand() - .5) * .05, cz - pz * d, 1, true);
+      for (const d of [2.4, 3.5]) {
+        push(cx + px * d + (rand() - .5) * .08, cz + pz * d, 1, true);
+        push(cx - px * d + (rand() - .5) * .08, cz - pz * d, 1, true);
       }
     }
-    // Ring sits outside the deck so culms frame the clearing, not the water.
-    for (let a = 0; a < Math.PI * 2; a += .16) {
-      for (const r of [9.0, 10.6]) {
-        const bx = ONSEN.x + Math.cos(a) * r, bz = ONSEN.z + Math.sin(a) * r;
-        if (bz < ONSEN.z - 2.4) continue; // keep south entrance open
-        if (onOnsenWalk(bx, bz) || inOnsenClearing(bx, bz)) continue;
-        push(bx, bz, 1);
-      }
+    // Sparse ring outside the stone apron.
+    for (let a = 0; a < Math.PI * 2; a += .28) {
+      const r = 10.2;
+      const bx = ONSEN.x + Math.cos(a) * r, bz = ONSEN.z + Math.sin(a) * r;
+      if (bz < ONSEN.z - 2.4) continue; // keep south entrance open
+      if (onOnsenWalk(bx, bz) || inOnsenClearing(bx, bz)) continue;
+      push(bx, bz, 1);
     }
     return data;
   }, []);
@@ -915,7 +931,7 @@ function BambooPathWalk() {
       <Box at={[0, -.02, 0]} size={[w, .12, pathLen + .6]} color="#d8d1bc" />
       {/* Side curbs */}
       {[-1, 1].map(side =>
-        <Box key={side} at={[side * (w / 2 + .12), .06, 0]} size={[.28, .22, pathLen + .8]} material={materials.darkWood} />
+        <Box key={side} at={[side * (w / 2 + .12), .06, 0]} size={[.28, .22, pathLen + .8]} material={materials.stone} />
       )}
       {/* Stepping slabs down the center */}
       {Array.from({ length: steps }, (_, i) => {
@@ -927,8 +943,22 @@ function BambooPathWalk() {
     <Box at={[tx, -.1, 17.2]} size={[w + .4, .14, 3.6]} color="#b7b09c" />
     <Box at={[tx, -.02, 17.2]} size={[w - .15, .12, 3.2]} color="#d8d1bc" />
     {[-1, 1].map(side =>
-      <Box key={side} at={[tx + side * (w / 2 + .12), .06, 17.1]} size={[.28, .22, 3.4]} material={materials.darkWood} />
+      <Box key={side} at={[tx + side * (w / 2 + .12), .06, 17.1]} size={[.28, .22, 3.4]} material={materials.stone} />
     )}
+  </group>;
+}
+/** Small 정자 roof over the bath edge — Korean outdoor pavilion cue. */
+function OnsenJeongja() {
+  const geo = useMemo(() => roofGeometry(5.2, 3.4), []);
+  const x = ONSEN.x - 4.2, z = ONSEN.z + 3.4;
+  return <group position={[x, 0, z]}>
+    {[-1, 1].flatMap(sx => [-1, 1].map(sz => <group key={`${sx}-${sz}`}>
+      <Box at={[sx * 1.7, .18, sz * 1.1]} size={[.55, .36, .55]} material={materials.stone} />
+      <Box at={[sx * 1.7, 1.7, sz * 1.1]} size={[.22, 2.8, .22]} material={materials.wood} />
+    </group>))}
+    <Box at={[0, 3.05, 0]} size={[3.8, .18, 2.5]} material={materials.wood} />
+    <Box at={[0, 2.92, 1.15]} size={[3.5, .06, .08]} material={materials.dancheongBlue} shadow={false} />
+    <mesh position={[0, -3.55, 0]} geometry={geo} material={materials.roof} castShadow />
   </group>;
 }
 function OnsenYard({ reducedMotion, lanternLit }: { reducedMotion: boolean; lanternLit: number }) {
@@ -940,7 +970,10 @@ function OnsenYard({ reducedMotion, lanternLit }: { reducedMotion: boolean; lant
   const signOnPath: [number, number, number] = [fx + (tx - fx) * .1, 2.85, fz + (tz - fz) * .1];
   return <group>
     <BambooPathWalk />
-    <Box at={[ONSEN.x, -.14, ONSEN.z]} size={[15, .2, 14]} material={materials.wood} />
+    {/* Stone apron + smaller timber deck — less ryokan wood clearing */}
+    <Box at={[ONSEN.x, -.14, ONSEN.z]} size={[15, .2, 14]} material={materials.stone} />
+    <Box at={[ONSEN.x, -.06, ONSEN.z + .4]} size={[9.5, .12, 8.5]} material={materials.wood} />
+    <OnsenJeongja />
     <BambooGrove />
     {ONSEN_HAMMOCKS.map(h => <Hammock key={h.id} id={h.id} a={h.a} b={h.b} height={1.2} sag={.56} />)}
     <Water x={ONSEN.x} z={ONSEN.z} w={ONSEN.w} d={ONSEN.d} basin reducedMotion={reducedMotion} />
@@ -949,11 +982,11 @@ function OnsenYard({ reducedMotion, lanternLit }: { reducedMotion: boolean; lant
     {[-1, 1].map(side => <Box key={side} at={[ONSEN.x + side * (2.1 + (ONSEN.w - 4.2) / 4), -.3, ONSEN.z - ONSEN.d / 2]} size={[(ONSEN.w - 4.2) / 2, 1, .3]} material={materials.stone} />)}
     {[0, 1, 2, 3].map(i => <Box key={i} at={[ONSEN.x, -.15 - i * .18, ONSEN.z - ONSEN.d / 2 + .3 + i * .35]} size={[3.4, .18, .4]} material={materials.stone} />)}
     {[-2, 0, 2].map(dx => <Steam key={dx} x={ONSEN.x + dx} z={ONSEN.z} reducedMotion={reducedMotion} />)}
-    <Sign title="노천탕" subtitle="OPEN-AIR BATH" at={[ONSEN.x + 2.6, 2.5, ONSEN.entry[1] - .4]} yaw={faceYaw(fx, fz, ONSEN.x + 2.6, ONSEN.entry[1] - .4)} near={16} hideClose={5} />
-    <Sign title="노천탕으로 가는 대나무길" subtitle="BAMBOO PATH" at={signOnPath} yaw={-Math.PI / 2} near={26} hideClose={4.5} />
-    <Lantern at={along(.28, 1)} lit={lanternLit} phase={.6} reducedMotion={reducedMotion} />
-    <Lantern at={along(.55, -1)} lit={lanternLit} phase={1.2} reducedMotion={reducedMotion} />
-    <Lantern at={along(.82, 1)} lit={lanternLit} phase={1.8} reducedMotion={reducedMotion} />
+    <Sign title="노천탕" subtitle="바깥 탕" at={[ONSEN.x + 2.6, 2.5, ONSEN.entry[1] - .4]} yaw={faceYaw(fx, fz, ONSEN.x + 2.6, ONSEN.entry[1] - .4)} near={16} hideClose={5} />
+    <Sign title="노천탕으로 가는 길" subtitle="마당에서 이어지는 산책" at={signOnPath} yaw={-Math.PI / 2} near={26} hideClose={4.5} />
+    <HorongPole at={along(.28, 1)} lit={lanternLit} phase={.6} reducedMotion={reducedMotion} />
+    <HorongPole at={along(.55, -1)} lit={lanternLit} phase={1.2} reducedMotion={reducedMotion} />
+    <HorongPole at={along(.82, 1)} lit={lanternLit} phase={1.8} reducedMotion={reducedMotion} />
   </group>;
 }
 function Birds({ reducedMotion, highQuality }: { reducedMotion: boolean; highQuality: boolean }) {
@@ -1091,10 +1124,12 @@ function ShopStall({ lanternLit = 0, highQuality = false }: { lanternLit?: numbe
   return <group position={[x, 0, z]} rotation={[0, yaw, 0]}>
     <Box at={[0, -.08, .2]} size={[3.4, .16, 2.2]} material={materials.stone} />
     <Box at={[0, .55, .15]} size={[2.8, 1.05, 1.1]} material={materials.wood} />
-    <Box at={[0, 1.12, .15]} size={[2.9, .1, 1.2]} material={materials.darkWood} />
-    {[-1.15, 1.15].map(sx => <Box key={sx} at={[sx, 1.55, -.35]} size={[.14, 1.7, .14]} material={materials.darkWood} />)}
-    <Box at={[0, 2.35, -.2]} size={[2.7, .08, 1.6]} material={materials.roof} />
-    <Box at={[0, 2.42, -.2]} size={[2.85, .06, 1.7]} material={materials.roof} />
+    <Box at={[0, 1.12, .15]} size={[2.9, .1, 1.2]} material={materials.wood} />
+    {[-1.15, 1.15].map(sx => <Box key={sx} at={[sx, 1.55, -.35]} size={[.14, 1.7, .14]} material={materials.wood} />)}
+    <Box at={[0, 2.28, -.05]} size={[2.55, .1, 1.35]} material={materials.wood} />
+    <Box at={[0, 2.42, -.35]} size={[2.9, .1, 1.55]} material={materials.roof} />
+    <Box at={[0, 2.52, -.35]} size={[3.05, .08, 1.65]} material={materials.roof} />
+    <Box at={[0, 2.18, .35]} size={[2.5, .06, .08]} material={materials.dancheongBlue} shadow={false} />
     <Box at={[0, 1.7, -.55]} size={[2.4, 1.1, .12]} material={materials.plaster} />
     <Box at={[-.75, 1.35, .55]} size={[.42, .18, .42]} color="#c45c3a" />
     <Box at={[-.75, 1.52, .55]} size={[.28, .16, .28]} color="#f2e6d4" />
@@ -1133,13 +1168,16 @@ export const World = memo(function World({ reducedMotion, highQuality, day }: { 
     <Furnishings reducedMotion={reducedMotion} highQuality={highQuality} />
     <SaunaCabin reducedMotion={reducedMotion} />
     <EntranceGate />
-    {[-1, 1].flatMap((side, si) => [-16, 10, 20].map((z, zi) => <Lantern key={`${side}-${z}`} at={[side * 6, 0, z]} lit={lanternLit} phase={si + zi * 1.4} reducedMotion={reducedMotion} highQuality={highQuality} />))}
+    {[-1, 1].flatMap((side, si) => [-16, 10, 20].map((z, zi) => <HorongPole key={`${side}-${z}`} at={[side * 6, 0, z]} lit={lanternLit} phase={si + zi * 1.4} reducedMotion={reducedMotion} highQuality={highQuality} />))}
     {([[-11, 9], [11, 9], [-9, -12], [9, -12], [5.8, 12]] as const).map(([hx, hz], i) =>
       <HorongPole key={`horong-${hx}-${hz}`} at={[hx, 0, hz]} lit={Math.max(lanternLit, .32)} phase={i * 1.4} reducedMotion={reducedMotion} highQuality={highQuality} />
     )}
     <Sign title="REVERN" subtitle="잠시, 나에게 돌아오는 시간" at={[9, 1.7, 21]} yaw={-.35} />
-    <Box at={[9, .7, 21]} size={[.12, 1.4, .12]} material={materials.darkWood} />
-    {[-1, 1].map(side => <Box key={side} at={[side * 19, .5, 25]} size={[8, 1, .5]} material={materials.plaster} />)}
+    <Box at={[9, .7, 21]} size={[.12, 1.4, .12]} material={materials.wood} />
+    {[-1, 1].map(side => <group key={side}>
+      <Box at={[side * 19, .7, 25]} size={[8, 1.4, .55]} material={materials.plaster} />
+      <Box at={[side * 19, 1.45, 25]} size={[8.2, .12, .7]} material={materials.roof} />
+    </group>)}
     {highQuality && <pointLight position={[33, 3, 6]} color="#f8c284" intensity={12 + 13 * (1 - day.nightness * .35)} distance={20} decay={1.5} />}
   </group>;
 });

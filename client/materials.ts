@@ -6,7 +6,7 @@ function texture(kind: 'wood' | 'stone' | 'roof' | 'plaster') {
   const canvas = document.createElement('canvas'); canvas.width = canvas.height = 256;
   const ctx = canvas.getContext('2d')!;
   // Korean palette: 소나무 timber, granite 기단, blue-grey 청기와, warm 황토 회벽.
-  ctx.fillStyle = kind === 'wood' ? '#c4a57a' : kind === 'stone' ? '#aeb2a8' : kind === 'roof' ? '#2c3a42' : '#e8d2a4'; ctx.fillRect(0, 0, 256, 256);
+  ctx.fillStyle = kind === 'wood' ? '#c9ad82' : kind === 'stone' ? '#aeb2a8' : kind === 'roof' ? '#1e3545' : '#ecc992'; ctx.fillRect(0, 0, 256, 256);
   const count = kind === 'wood' ? 2500 : 9000;
   for (let i = 0; i < count; i++) {
     const x = random() * 256, y = random() * 256;
@@ -16,20 +16,24 @@ function texture(kind: 'wood' | 'stone' | 'roof' | 'plaster') {
   }
   if (kind === 'roof') for (let x = 0; x < 256; x += 14) {
     // 청기와 rows: cooler blue-grey concave/convex tile rhythm.
-    const gradient = ctx.createLinearGradient(x, 0, x + 14, 0); gradient.addColorStop(0, '#1a2730'); gradient.addColorStop(.45, '#3d5160'); gradient.addColorStop(1, '#203038'); ctx.fillStyle = gradient; ctx.fillRect(x, 0, 14, 256);
-    for (let y = 0; y < 256; y += 28) { ctx.fillStyle = '#0e171e99'; ctx.fillRect(x, y, 14, 2); ctx.fillStyle = '#5a7080'; ctx.fillRect(x + 6, y + 4, 2, 20); }
+    const gradient = ctx.createLinearGradient(x, 0, x + 14, 0); gradient.addColorStop(0, '#152838'); gradient.addColorStop(.45, '#3a556c'); gradient.addColorStop(1, '#1a3040'); ctx.fillStyle = gradient; ctx.fillRect(x, 0, 14, 256);
+    for (let y = 0; y < 256; y += 28) { ctx.fillStyle = '#0c162099'; ctx.fillRect(x, y, 14, 2); ctx.fillStyle = '#628098'; ctx.fillRect(x + 6, y + 4, 2, 20); }
   }
-  if (kind === 'plaster') for (let i = 0; i < 420; i++) { ctx.fillStyle = `rgba(148,96,48,${.07 + random() * .1})`; ctx.fillRect(random() * 256, random() * 256, 2 + random() * 3, 1 + random()); }
+  if (kind === 'plaster') for (let i = 0; i < 420; i++) { ctx.fillStyle = `rgba(148,96,48,${.08 + random() * .12})`; ctx.fillRect(random() * 256, random() * 256, 2 + random() * 3, 1 + random()); }
   const t = new THREE.CanvasTexture(canvas); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(kind === 'wood' ? 2 : kind === 'stone' ? 12 : 4, kind === 'wood' ? 1 : kind === 'stone' ? 12 : 4); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t;
 }
 export const materials = {
-  // Soft spa-retreat timber: warm but restrained, matching the floating hall's quiet luxury.
-  wood: new THREE.MeshStandardMaterial({ map: texture('wood'), roughness: .8, color: '#b89a78' }),
-  darkWood: new THREE.MeshStandardMaterial({ map: texture('wood'), roughness: .84, color: '#4a3a30' }),
+  // Soft pine / chestnut timber — hanok posts, not lacquer-black shrine wood.
+  wood: new THREE.MeshStandardMaterial({ map: texture('wood'), roughness: .8, color: '#c4a882' }),
+  darkWood: new THREE.MeshStandardMaterial({ map: texture('wood'), roughness: .84, color: '#6e5340' }),
   stone: new THREE.MeshStandardMaterial({ map: texture('stone'), roughness: .95, color: '#c5c4b6' }),
-  plaster: new THREE.MeshStandardMaterial({ map: texture('plaster'), roughness: 1, color: '#ebe0cc' }),
-  roof: new THREE.MeshStandardMaterial({ map: texture('roof'), roughness: .74, color: '#2c3836', side: THREE.DoubleSide }),
-  brass: new THREE.MeshStandardMaterial({ color: '#9a8560', roughness: .42, metalness: .55 })
+  plaster: new THREE.MeshStandardMaterial({ map: texture('plaster'), roughness: 1, color: '#f0d9a8' }),
+  roof: new THREE.MeshStandardMaterial({ map: texture('roof'), roughness: .74, color: '#243848', side: THREE.DoubleSide }),
+  brass: new THREE.MeshStandardMaterial({ color: '#9a8560', roughness: .42, metalness: .55 }),
+  // Quiet 단청 accents under eaves — spa-scale, not palace coverage.
+  dancheongBlue: new THREE.MeshStandardMaterial({ color: '#2f5d8a', roughness: .88 }),
+  dancheongGreen: new THREE.MeshStandardMaterial({ color: '#3d6b4f', roughness: .88 }),
+  dancheongRed: new THREE.MeshStandardMaterial({ color: '#a33a2f', roughness: .88 })
 };
 export function foliageTexture() {
   const canvas = document.createElement('canvas'); canvas.width = canvas.height = 256; const ctx = canvas.getContext('2d')!;
@@ -68,14 +72,17 @@ export function bambooLeafTexture() {
   const t = new THREE.CanvasTexture(canvas); t.colorSpace = THREE.SRGBColorSpace; return t;
 }
 export function latticeTexture(repeats: number) {
-  // Quiet 한지 + charcoal muntins — soft spa retreat, not palace ornament.
+  // Korean 띠살 창호 — denser muntins on warm 한지, not sparse shoji bars.
   const canvas = document.createElement('canvas'); canvas.width = 256; canvas.height = 384; const ctx = canvas.getContext('2d')!;
-  ctx.fillStyle = '#efe6d2'; ctx.fillRect(0, 0, 256, 384);
+  ctx.fillStyle = '#f3e8d4'; ctx.fillRect(0, 0, 256, 384);
   for (let i = 0; i < 1600; i++) { ctx.fillStyle = 'rgba(140,120,90,.045)'; ctx.fillRect(random() * 256, random() * 384, 2, 1); }
+  ctx.fillStyle = '#5a4636';
+  for (let i = 0; i <= 256; i += 16) ctx.fillRect(i - 1, 0, 2.2, 384);
+  for (let j = 0; j <= 384; j += 32) ctx.fillRect(0, j - 1.5, 256, 3);
   ctx.fillStyle = '#3d342c';
-  for (let i = 0; i <= 256; i += 24) ctx.fillRect(i - 1, 0, 2.5, 384);
-  for (let j of [0, 128, 256, 384]) ctx.fillRect(0, j - 2, 256, 4);
-  ctx.strokeStyle = '#2a241e'; ctx.lineWidth = 12; ctx.strokeRect(5, 5, 246, 374);
+  ctx.fillRect(0, 0, 256, 10); ctx.fillRect(0, 374, 256, 10);
+  ctx.fillRect(0, 0, 10, 384); ctx.fillRect(246, 0, 10, 384);
+  ctx.fillRect(0, 188, 256, 8);
   const t = new THREE.CanvasTexture(canvas); t.wrapS = THREE.RepeatWrapping; t.repeat.x = repeats; t.colorSpace = THREE.SRGBColorSpace; return t;
 }
 /** Korean 창호 — warm 한지 paper with 띠살 wooden muntins. */
@@ -87,7 +94,7 @@ export function hanjiDoorTexture() {
     ctx.fillRect(random() * 256, random() * 512, 1 + random() * 2, 1);
   }
   // Outer 문선
-  ctx.fillStyle = '#3a3128';
+  ctx.fillStyle = '#5a4636';
   ctx.fillRect(0, 0, 256, 14); ctx.fillRect(0, 498, 256, 14);
   ctx.fillRect(0, 0, 14, 512); ctx.fillRect(242, 0, 14, 512);
   // Mid rail (중방)
