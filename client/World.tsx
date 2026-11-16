@@ -413,19 +413,22 @@ function Lantern({ at, dark = false, lit = 0, phase = 0, reducedMotion = false, 
   </group>;
 }
 /** Courtyard 호롱 — tall timber pole with a warm paper lantern. */
-function HorongPole({ at, lit = 0, phase = 0, reducedMotion = false, highQuality = false }: { at: [number, number, number]; lit?: number; phase?: number; reducedMotion?: boolean; highQuality?: boolean }) {
+function HorongPole({ at, lit = 0, phase = 0, reducedMotion = false, highQuality = false, street = false }: { at: [number, number, number]; lit?: number; phase?: number; reducedMotion?: boolean; highQuality?: boolean; /** Always cast light when lit — for dim paths like the spa approach. */ street?: boolean }) {
   const shade = useRef<THREE.MeshStandardMaterial>(null!);
   const light = useRef<THREE.PointLight>(null!);
   const amount = Math.max(0, lit);
+  const cast = street || highQuality;
+  const strength = street ? 11 : 7.5;
+  const reach = street ? 16 : 12;
   useFrame(({ clock }) => {
     if (amount < .02) {
       if (shade.current) shade.current.emissiveIntensity = .05;
       if (light.current) light.current.intensity = 0;
       return;
     }
-    const flicker = reducedMotion || !highQuality ? 1 : .94 + Math.sin(clock.elapsedTime * 1.8 + phase) * .04;
+    const flicker = reducedMotion || !cast ? 1 : .94 + Math.sin(clock.elapsedTime * 1.8 + phase) * .04;
     if (shade.current) shade.current.emissiveIntensity = (.7 + amount * .9) * flicker;
-    if (light.current) light.current.intensity = 7.5 * amount * flicker;
+    if (light.current) light.current.intensity = strength * amount * flicker;
   });
   return <group position={at}>
     <Box at={[0, 1.55, 0]} size={[.16, 3.1, .16]} material={materials.darkWood} />
@@ -435,7 +438,7 @@ function HorongPole({ at, lit = 0, phase = 0, reducedMotion = false, highQuality
     <mesh position={[.55, 2.15, 0]}><cylinderGeometry args={[.18, .2, .42, 14]} /><meshStandardMaterial ref={shade} color="#f3e2c0" emissive="#ffc878" emissiveIntensity={.05 + amount * 1.55} roughness={.85} toneMapped={false} /></mesh>
     <mesh position={[.55, 2.38, 0]}><cylinderGeometry args={[.2, .2, .04, 14]} /><meshStandardMaterial color="#6a5640" roughness={.7} /></mesh>
     <mesh position={[.55, 1.93, 0]}><cylinderGeometry args={[.2, .2, .04, 14]} /><meshStandardMaterial color="#6a5640" roughness={.7} /></mesh>
-    {highQuality && amount > .05 && <pointLight ref={light} position={[.55, 2.15, 0]} color="#ffd6a0" intensity={7.5 * amount} distance={12} decay={1.45} />}
+    {cast && amount > .05 && <pointLight ref={light} position={[.55, 2.15, 0]} color="#ffd6a0" intensity={strength * amount} distance={reach} decay={1.45} />}
   </group>;
 }
 function Steam({ x, z, reducedMotion }: { x: number; z: number; reducedMotion: boolean }) {
@@ -1226,10 +1229,14 @@ export const World = memo(function World({ reducedMotion, highQuality, day }: { 
     <Furnishings reducedMotion={reducedMotion} highQuality={highQuality} lanternLit={lanternLit} />
     <SaunaCabin reducedMotion={reducedMotion} />
     <EntranceGate />
-    {/* East side: keep only the shop-adjacent lamp — drop the two behind toward the spa. */}
+    {/* Courtyard edge lamps */}
     {[-1, 1].flatMap((side, si) => (side === 1 ? [-16, 20] : [-16, 10, 20]).map((z, zi) => <HorongPole key={`${side}-${z}`} at={[side * 6, 0, z]} lit={lanternLit} phase={si + zi * 1.4} reducedMotion={reducedMotion} highQuality={highQuality} />))}
     {([[-11, 9], [11, 9], [-9, -12], [9, -12]] as const).map(([hx, hz], i) =>
       <HorongPole key={`horong-${hx}-${hz}`} at={[hx, 0, hz]} lit={lanternLit} phase={i * 1.4} reducedMotion={reducedMotion} highQuality={highQuality} />
+    )}
+    {/* Spa approach street lamps — east path was too dark after dusk. */}
+    {([[16.5, -8], [16.5, 2], [16.5, 10], [21.5, -6], [21.5, 5], [26.5, -9], [26.5, 8]] as const).map(([hx, hz], i) =>
+      <HorongPole key={`spa-lamp-${hx}-${hz}`} at={[hx, 0, hz]} lit={lanternLit} phase={2.1 + i * .7} reducedMotion={reducedMotion} highQuality={highQuality} street />
     )}
     <Sign title="REVERN" subtitle="잠시, 나에게 돌아오는 시간" at={[9, 1.7, 21]} yaw={-.35} />
     <Box at={[9, .7, 21]} size={[.12, 1.4, .12]} material={materials.wood} />
@@ -1237,6 +1244,8 @@ export const World = memo(function World({ reducedMotion, highQuality, day }: { 
       <Box at={[side * 19, .7, 25]} size={[8, 1.4, .55]} material={materials.plaster} />
       <Box at={[side * 19, 1.45, 25]} size={[8.2, .12, .7]} material={materials.roof} />
     </group>)}
-    {highQuality && <pointLight position={[33, 3, 6]} color="#f8c284" intensity={12 + 13 * (1 - day.nightness * .35)} distance={20} decay={1.5} />}
+    <pointLight position={[33, 3.2, 0]} color="#f8c284" intensity={(8 + 14 * lanternLit) * (highQuality ? 1 : .75)} distance={22} decay={1.5} />
+    <pointLight position={[30, 2.8, -8]} color="#ffd6a0" intensity={6 * lanternLit} distance={14} decay={1.5} />
+    <pointLight position={[30, 2.8, 8]} color="#ffd6a0" intensity={6 * lanternLit} distance={14} decay={1.5} />
   </group>;
 });
