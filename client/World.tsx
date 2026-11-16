@@ -550,6 +550,12 @@ function SaunaCabin({ reducedMotion }: { reducedMotion: boolean }) {
       <Box at={[0, .5, .67]} size={[.6, .3, .035]} color="#aa6944" />
       {[-1, 1].map(side => <Box key={side} at={[side * 1.05, .75, 0]} size={[.09, .12, 2.2]} material={materials.wood} />)}
       <mesh position={[-1.4, .35, .3]}><cylinderGeometry args={[.32, .26, .6, 16]} /><meshStandardMaterial color="#b78e60" roughness={.9} /></mesh>
+      {/* Soft löyly cove — warm wash over the stones and water bucket, not a spotlight. */}
+      <Box at={[0, 2.35, -.15]} size={[2.4, .06, .35]} material={materials.wood} />
+      <CoveStrip at={[0, 2.22, -.05]} size={[2.1, .035, .12]} lit={.55} />
+      <WallWash at={[-1.55, 1.35, .15]} yaw={Math.PI / 2} width={1.4} lit={.45} />
+      <pointLight position={[0, 2.05, .2]} color="#ffc17b" intensity={4.2} distance={6.5} decay={1.7} />
+      <pointLight position={[-1.25, 1.55, .35]} color="#f0d4a8" intensity={2.4} distance={4.2} decay={1.8} />
     </group>
     <SaunaSteam reducedMotion={reducedMotion} />
     {/* Above the door lintel, facing the spa — not clipped by the frame. */}
