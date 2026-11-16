@@ -15,28 +15,34 @@ import type { DayCycle } from './dayCycle';
 function Box({ at, size, material = materials.wood, color, shadow = true }: { at: [number, number, number]; size: [number, number, number]; material?: THREE.Material; color?: string; shadow?: boolean }) {
   return <mesh position={at} castShadow={shadow} receiveShadow material={color ? undefined : material}><boxGeometry args={size} />{color && <meshStandardMaterial color={color} roughness={.85} />}</mesh>;
 }
-function roofGeometry(w: number, d: number, lift = 0, opts?: { shallow?: boolean; /** No eave past this local-Z face (−1 = −Z / open north). */ flushFace?: -1 | 1 }) {
-  // Korean 팔작지붕. Flush open faces stay high — no descending giwa curtain over the doorway.
+function roofGeometry(w: number, d: number, lift = 0, opts?: {
+  shallow?: boolean;
+  /** No eave past this local-Z face (−1 = −Z / open north). */
+  flushFace?: -1 | 1;
+  /** Pull the open face roof back so descending giwa never hangs over the doorway. */
+  openInset?: number;
+}) {
+  // Korean 팔작지붕. Open tea front is cut back — no descending tile curtain over the doors.
   const vertices: number[] = [], uvs: number[] = [], indices: number[] = []; const nx = 36, nz = 36;
   const shallow = !!opts?.shallow;
   const flush = opts?.flushFace;
-  const sidePad = shallow ? .2 : 5.1;
+  const inset = Math.max(0, opts?.openInset ?? 0);
+  const sidePad = shallow ? .15 : 5.1;
   const ew = w + sidePad, ed = d + sidePad;
-  const hipDrop = shallow ? 2.55 : 4.05, cornerLift = shallow || flush != null ? 0 : 2.85;
+  const hipDrop = shallow ? 1.15 : 4.05, cornerLift = shallow || flush != null ? 0 : 2.85;
   const ridge = 7.85 + lift;
+  const openEdge = flush === -1 ? -d / 2 + inset : flush === 1 ? d / 2 - inset : null;
   for (let j = 0; j <= nz; j++) for (let i = 0; i <= nx; i++) {
     let x = (i / nx - .5) * ew, z = (j / nz - .5) * ed;
-    // Pull the open-front edge back flush with the wall line — no overhang.
-    if (flush === -1) z = Math.max(z, -d / 2);
-    if (flush === 1) z = Math.min(z, d / 2);
+    if (flush === -1) z = Math.max(z, openEdge!);
+    if (flush === 1) z = Math.min(z, openEdge!);
     const ax = Math.abs(x) / (ew / 2);
-    // Drop tiles only toward closed faces / sides — never down the open doorway face.
+    // Drop tiles only toward the closed back / sides — keep the cut open edge nearly flat.
     let azHip = Math.abs(z) / Math.max(ed / 2, .001);
-    if (flush === -1) azHip = Math.max(0, z) / Math.max(d / 2, .001);
-    if (flush === 1) azHip = Math.max(0, -z) / Math.max(d / 2, .001);
-    let hip = Math.max(azHip, Math.max(0, (ax - .4) / .6));
-    if (flush === -1 && z <= -d / 2 + .05) hip = Math.max(0, (ax - .62) / .38);
-    if (flush === 1 && z >= d / 2 - .05) hip = Math.max(0, (ax - .62) / .38);
+    if (flush === -1) azHip = Math.max(0, z - (openEdge ?? 0)) / Math.max(d - inset, .001);
+    if (flush === 1) azHip = Math.max(0, (openEdge ?? 0) - z) / Math.max(d - inset, .001);
+    let hip = Math.max(azHip * (shallow ? .55 : 1), Math.max(0, (ax - (shallow ? .55 : .4)) / (shallow ? .45 : .6)));
+    if (flush != null && Math.abs(z - (openEdge ?? 0)) < .08) hip = Math.max(0, (ax - .7) / .3) * .25;
     const corner = flush != null ? 0 : Math.pow(Math.min(1, ax) * Math.min(1, azHip), 1.55);
     const sag = flush != null ? 0 : .18 * Math.sin(ax * Math.PI) * Math.sin(azHip * Math.PI);
     const y = ridge - hipDrop * hip + cornerLift * Math.pow(corner, 1.02) + .12 * Math.pow(hip, 5) - sag;
@@ -63,6 +69,33 @@ function HanjiDoorPanel({ width, height }: { width: number; height: number }) {
     <Box at={[width / 2 - .04, 0, 0]} size={[.08, height, .08]} material={materials.wood} />
     <Box at={[0, 0, 0]} size={[width - .12, .06, .06]} material={materials.wood} />
   </group>;
+}
+/** Tea entrance 분합문 — slides sideways when a visitor approaches. */
+function TeaSlidingDoors({ x, z, w, d, lift = 0 }: { x: number; z: number; w: number; d: number; lift?: number }) {
+  const left = useRef<THREE.Group>(null!);
+  const right = useRef<THREE.Group>(null!);
+  const open = useRef(0);
+  const doorW = Math.min(3.4, w * .22);
+  const doorH = 3.7 + lift * .2;
+  const frontZ = z - d / 2;
+  useFrame((_, dt) => {
+    const s = network.getState();
+    const self = s.snapshot?.players.find(p => p.id === s.id);
+    const near = !!self && Math.abs(self.x - x) < doorW * 1.7 && self.z > frontZ - 5 && self.z < frontZ + 4;
+    open.current = THREE.MathUtils.damp(open.current, near ? 1 : 0, reducedMotionDamp(near), dt);
+    const slide = open.current * (doorW * .95);
+    if (left.current) left.current.position.x = -doorW * .52 - slide;
+    if (right.current) right.current.position.x = doorW * .52 + slide;
+  });
+  return <group position={[x, .9 + doorH / 2, frontZ + .06]}>
+    <Box at={[0, doorH / 2 + .06, 0]} size={[doorW * 2.35, .1, .14]} material={materials.wood} />
+    <Box at={[0, -doorH / 2 - .04, 0]} size={[doorW * 2.35, .08, .14]} material={materials.wood} />
+    <group ref={left}><HanjiDoorPanel width={doorW} height={doorH} /></group>
+    <group ref={right}><HanjiDoorPanel width={doorW} height={doorH} /></group>
+  </group>;
+}
+function reducedMotionDamp(near: boolean) {
+  return near ? 7 : 4.5;
 }
 /** Tall 한지 분합문 panels on a pavilion wall. */
 function HanjiWall({ wall, center, lift = 0 }: { wall: typeof COLLIDERS[number]; center: [number, number]; lift?: number }) {
@@ -118,8 +151,9 @@ function Pavilion({ id, lit = 0, reducedMotion = false }: { id: Exclude<ZoneId, 
   // Yoga and tea need more vertical air for standing poses / quiet reading.
   const lift = id === 'yoga' || id === 'tea' ? 2.2 : 0;
   const shallowRoof = id === 'tea';
-  // Tea opens north (−Z locally) toward the courtyard — flush that face so no eave hangs over the front.
-  const geo = useMemo(() => roofGeometry(w, d, lift, shallowRoof ? { shallow: true, flushFace: -1 } : undefined), [w, d, lift, shallowRoof]);
+  // Tea: cut the giwa back from the open north so tiles never hang down over the doors.
+  const teaInset = 3.4;
+  const geo = useMemo(() => roofGeometry(w, d, lift, shallowRoof ? { shallow: true, flushFace: -1, openInset: teaInset } : undefined), [w, d, lift, shallowRoof, teaInset]);
   const walls = COLLIDERS.filter(c => c.height > 1 && Math.abs(c.x - x) <= w / 2 + .1 && Math.abs(c.z - z) <= d / 2 + .1 && (c.w > 1 || c.d > 1) && c.z !== 5);
   const alongX = id === 'floating' || id === 'tea'; const openSide = id === 'floating' ? 1 : id === 'tea' ? -1 : id === 'yoga' ? 1 : -1;
   const beam = 5.02 + lift;
@@ -163,12 +197,12 @@ function Pavilion({ id, lit = 0, reducedMotion = false }: { id: Exclude<ZoneId, 
       <Box at={[c.x, 2.5 + lift / 2, c.z]} size={[c.w + .12, .12, c.d + .12]} material={materials.wood} />
       {id === 'tea' || id === 'yoga' ? <HanjiWall wall={c} center={r.center} lift={lift} /> : <Lattice wall={c} center={r.center} />}
     </group>)}
-    {/* Tea keeps the north mouth open — no porch posts / 가림막 doors that block the onsen view. */}
     {id !== 'tea' && postTs.map(t => <group key={t} position={[alongX ? x + w * t : x + w / 2 * openSide, 0, alongX ? z + d / 2 * openSide : z + d * t]}>
       <Box at={[0, .22, 0]} size={[.9, .44, .9]} material={materials.stone} />
       <Box at={[0, postH / 2 + .2, 0]} size={[.4, postH, .4]} material={materials.wood} />
       <Box at={[0, beam - .17, 0]} size={alongX ? [1.55, .24, .72] : [.72, .24, 1.55]} material={materials.wood} />
     </group>)}
+    {id === 'tea' && <TeaSlidingDoors x={x} z={z} w={w} d={d} lift={lift} />}
     <Box at={[x, beam, z - d / 2]} size={[w + .9, .32, .34]} material={materials.wood} />
     <Box at={[x, beam, z + d / 2]} size={[w + .9, .32, .34]} material={materials.wood} />
     <Box at={[x - w / 2, beam, z]} size={[.34, .32, d + .9]} material={materials.wood} />
@@ -181,16 +215,16 @@ function Pavilion({ id, lit = 0, reducedMotion = false }: { id: Exclude<ZoneId, 
     <Box at={[x, beam - .2, z + d / 2 - .02]} size={[w + .7, .08, .1]} material={materials.dancheongBlue} shadow={false} />
     <Box at={[x, beam - .28, z + d / 2 - .02]} size={[w + .7, .05, .08]} material={materials.dancheongGreen} shadow={false} />
     {Array.from({ length: Math.ceil(w / 1.15) }, (_, i) => {
-      // Tea: stop rafters at the open front — no projecting eave over the entrance.
-      const rafterD = shallowRoof ? d : d + 3.2;
-      const rafterZ = shallowRoof ? z + .15 : z;
+      // Tea: keep rafters behind the open doorway — matches the inset giwa cut.
+      const rafterD = shallowRoof ? Math.max(4, d - teaInset) : d + 3.2;
+      const rafterZ = shallowRoof ? z + teaInset / 2 : z;
       return <Box key={`rafter-${i}`} at={[x - w / 2 + i * 1.15, beam + .3, rafterZ]} size={[.09, .12, rafterD]} material={materials.wood} />;
     })}
     <mesh position={[x, 0, z]} geometry={geo} material={materials.roof} castShadow receiveShadow />
-    {/* Stacked 용마루 */}
-    <Box at={[x, 7.62 + lift, z]} size={[w * .92, .28, .42]} material={materials.roof} />
-    <Box at={[x, 7.78 + lift, z]} size={[w * .88, .2, .5]} material={materials.roof} />
-    <Box at={[x, 7.92 + lift, z]} size={[w * .84, .12, .58]} material={materials.roof} />
+    {/* Stacked 용마루 — tea ridge sits over the inset roof, not the open door. */}
+    <Box at={[x, 7.62 + lift, shallowRoof ? z + teaInset * .5 : z]} size={[w * (shallowRoof ? .78 : .92), .28, .42]} material={materials.roof} />
+    <Box at={[x, 7.78 + lift, shallowRoof ? z + teaInset * .5 : z]} size={[w * (shallowRoof ? .74 : .88), .2, .5]} material={materials.roof} />
+    <Box at={[x, 7.92 + lift, shallowRoof ? z + teaInset * .5 : z]} size={[w * (shallowRoof ? .7 : .84), .12, .58]} material={materials.roof} />
     {id !== 'tea' && [-1, 1].map(side => <group key={side} position={[x + side * w * .45, 7.98 + lift, z]}>
       <Box at={[0, 0, 0]} size={[.42, .48, .68]} material={materials.roof} />
       <Box at={[side * .16, .26, 0]} size={[.16, .2, .45]} material={materials.roof} />
