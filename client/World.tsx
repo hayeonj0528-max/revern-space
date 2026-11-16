@@ -416,27 +416,27 @@ function Lantern({ at, dark = false, lit = 0, phase = 0, reducedMotion = false, 
     {useLight && <pointLight ref={light} position={[0, 1.8, 0]} color="#ffc17b" intensity={dark ? 14 : 8 * lit} distance={11} decay={1.35} />}
   </group>;
 }
-/** Small paper 호롱 hung in the bamboo — always lights the clearing when lit. */
+/** Small paper 호롱 hung in the bamboo — soft glow for the clearing when lit. */
 function BambooHorong({ at, lit = 0, phase = 0, reducedMotion = false }: { at: [number, number, number]; lit?: number; phase?: number; reducedMotion?: boolean }) {
   const shade = useRef<THREE.MeshStandardMaterial>(null!);
   const light = useRef<THREE.PointLight>(null!);
-  const amount = Math.max(0, lit);
+  const amount = Math.max(0, lit) * .62;
   useFrame(({ clock }) => {
     if (amount < .02) {
-      if (shade.current) shade.current.emissiveIntensity = .08;
+      if (shade.current) shade.current.emissiveIntensity = .06;
       if (light.current) light.current.intensity = 0;
       return;
     }
-    const flicker = reducedMotion ? 1 : .93 + Math.sin(clock.elapsedTime * 1.9 + phase) * .05;
-    if (shade.current) shade.current.emissiveIntensity = (.85 + amount) * flicker;
-    if (light.current) light.current.intensity = 9.5 * amount * flicker;
+    const flicker = reducedMotion ? 1 : .94 + Math.sin(clock.elapsedTime * 1.9 + phase) * .04;
+    if (shade.current) shade.current.emissiveIntensity = (.55 + amount * .85) * flicker;
+    if (light.current) light.current.intensity = 5.2 * amount * flicker;
   });
   return <group position={at}>
     <mesh position={[0, .55, 0]}><cylinderGeometry args={[.008, .008, 1.1, 5]} /><meshStandardMaterial color="#3a342c" roughness={.9} /></mesh>
-    <mesh position={[0, .05, 0]}><cylinderGeometry args={[.16, .18, .38, 12]} /><meshStandardMaterial ref={shade} color="#f3e2c0" emissive="#ffc878" emissiveIntensity={.08 + amount * 1.7} roughness={.85} toneMapped={false} /></mesh>
+    <mesh position={[0, .05, 0]}><cylinderGeometry args={[.16, .18, .38, 12]} /><meshStandardMaterial ref={shade} color="#f3e2c0" emissive="#ffc878" emissiveIntensity={.06 + amount * 1.1} roughness={.85} toneMapped={false} /></mesh>
     <mesh position={[0, .26, 0]}><cylinderGeometry args={[.17, .17, .04, 12]} /><meshStandardMaterial color="#6a5640" roughness={.7} /></mesh>
     <mesh position={[0, -.16, 0]}><cylinderGeometry args={[.17, .17, .04, 12]} /><meshStandardMaterial color="#6a5640" roughness={.7} /></mesh>
-    {amount > .05 && <pointLight ref={light} position={[0, .05, 0]} color="#ffd6a0" intensity={9.5 * amount} distance={13} decay={1.45} />}
+    {amount > .05 && <pointLight ref={light} position={[0, .05, 0]} color="#ffd6a0" intensity={5.2 * amount} distance={11} decay={1.55} />}
   </group>;
 }
 /** Courtyard 호롱 — tall timber pole with a warm paper lantern. */
@@ -1076,10 +1076,10 @@ function OnsenYard({ reducedMotion, lanternLit, highQuality = false }: { reduced
     {[-2, 0, 2].map(dx => <Steam key={dx} x={ONSEN.x + dx} z={ONSEN.z} reducedMotion={reducedMotion} />)}
     <Sign title="노천탕" subtitle="바깥 탕" at={[ONSEN.x + 2.6, 2.5, ONSEN.entry[1] - .4]} yaw={faceYaw(fx, fz, ONSEN.x + 2.6, ONSEN.entry[1] - .4)} near={16} hideClose={5} />
     <Sign title="노천탕으로 가는 길" subtitle="마당에서 이어지는 산책" at={signOnPath} yaw={-Math.PI / 2} near={26} hideClose={4.5} />
-    <HorongPole at={along(.28, 1)} lit={lanternLit} phase={.6} reducedMotion={reducedMotion} highQuality={highQuality} street />
-    <HorongPole at={along(.55, -1)} lit={lanternLit} phase={1.2} reducedMotion={reducedMotion} highQuality={highQuality} street />
-    <HorongPole at={along(.82, 1)} lit={lanternLit} phase={1.8} reducedMotion={reducedMotion} highQuality={highQuality} street />
-    <pointLight position={[ONSEN.x, 3.2, ONSEN.z + .4]} color="#ffd6a0" intensity={7 * lanternLit} distance={16} decay={1.5} />
+    <HorongPole at={along(.28, 1)} lit={lanternLit * .7} phase={.6} reducedMotion={reducedMotion} highQuality={highQuality} street />
+    <HorongPole at={along(.55, -1)} lit={lanternLit * .7} phase={1.2} reducedMotion={reducedMotion} highQuality={highQuality} street />
+    <HorongPole at={along(.82, 1)} lit={lanternLit * .7} phase={1.8} reducedMotion={reducedMotion} highQuality={highQuality} street />
+    <pointLight position={[ONSEN.x, 3.2, ONSEN.z + .4]} color="#ffd6a0" intensity={3.2 * lanternLit} distance={14} decay={1.55} />
   </group>;
 }
 function Birds({ reducedMotion, highQuality }: { reducedMotion: boolean; highQuality: boolean }) {
