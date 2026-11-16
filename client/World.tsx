@@ -1043,7 +1043,8 @@ function HammockTree({ at }: { at: [number, number] }) {
     <mesh position={[0, 2.4, 0]} castShadow><cylinderGeometry args={[.22, .32, 4.8, 8]} /><meshStandardMaterial color="#5c4a38" roughness={1} /></mesh>
     <mesh position={[.35, 3.6, .1]} rotation={[.25, 0, -.55]} castShadow><cylinderGeometry args={[.08, .12, 1.8, 6]} /><meshStandardMaterial color="#5c4a38" roughness={1} /></mesh>
     <mesh position={[-.3, 3.9, -.15]} rotation={[.2, .4, .5]} castShadow><cylinderGeometry args={[.07, .11, 1.5, 6]} /><meshStandardMaterial color="#5c4a38" roughness={1} /></mesh>
-    {[[0, 5.1, 0, 2.4], [.7, 4.7, .2, 1.7], [-.65, 4.9, -.25, 1.6], [.2, 5.5, -.5, 1.5], [-.3, 5.4, .45, 1.4]].map(([x, y, z, s], i) =>
+    {/* Keep canopy off the hammock mid-span so lying guests can see the night sky. */}
+    {[[.15, 5.35, .55, 1.9], [.85, 4.85, .35, 1.55], [-.8, 5.0, -.4, 1.45], [.55, 5.55, -.55, 1.35], [-.55, 5.45, .6, 1.25]].map(([x, y, z, s], i) =>
       <mesh key={i} position={[x, y, z]} rotation={[.3 + i * .1, i * 1.1, .2]}><planeGeometry args={[s, s]} /><meshStandardMaterial map={foliage} alphaTest={.4} side={THREE.DoubleSide} roughness={1} color={i % 2 ? '#c5d2a8' : '#a8bc8a'} /></mesh>
     )}
     <Box at={[0, .08, 0]} size={[.7, .16, .7]} material={materials.stone} />
@@ -1247,6 +1248,11 @@ function TeaLibrary() {
 }
 function SunsetSky({ day }: { day: DayCycle }) {
   const root = useRef<THREE.Group>(null!);
+  const starsRef = useRef<THREE.Points>(null!);
+  const starMat = useRef<THREE.PointsMaterial>(null!);
+  const moonMat = useRef<THREE.MeshBasicMaterial>(null!);
+  const moonHalo = useRef<THREE.MeshBasicMaterial>(null!);
+  const moonSoft = useRef<THREE.MeshBasicMaterial>(null!);
   const mat = useMemo(() => new THREE.ShaderMaterial({
     side: THREE.BackSide,
     depthWrite: false,
@@ -1273,25 +1279,68 @@ function SunsetSky({ day }: { day: DayCycle }) {
         gl_FragColor = vec4(sky, 1.);
       }`
   }), []);
-  useFrame(({ camera }) => {
+  const starGeo = useMemo(() => {
+    const count = 1100;
+    const pos = new Float32Array(count * 3);
+    for (let i = 0; i < count; i++) {
+      // Upper hemisphere — keep a little clear of the horizon haze.
+      const u = Math.random(), v = Math.random();
+      const theta = u * Math.PI * 2;
+      const phi = Math.acos(.08 + .92 * Math.pow(v, .72));
+      const r = 195;
+      pos[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+      pos[i * 3 + 1] = r * Math.cos(phi);
+      pos[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    return g;
+  }, []);
+  useFrame(({ camera, clock }) => {
     root.current.position.copy(camera.position);
     mat.uniforms.zenith.value.set(day.zenith);
     mat.uniforms.horizon.value.set(day.horizon);
     mat.uniforms.glow.value = day.glow;
     mat.uniforms.night.value = day.nightness;
+    const starVis = Math.max(0, Math.min(1, (day.nightness - .38) / .42));
+    if (starMat.current) {
+      const twinkle = day.nightness > .5 ? .82 + Math.sin(clock.elapsedTime * .7) * .08 : 1;
+      starMat.current.opacity = starVis * .92 * twinkle;
+      starMat.current.size = 1.15 + starVis * .55;
+      starsRef.current.visible = starVis > .02;
+    }
+    const moonVis = Math.max(0, Math.min(1, (day.nightness - .42) / .4));
+    if (moonMat.current) moonMat.current.opacity = moonVis;
+    if (moonHalo.current) moonHalo.current.opacity = .16 * moonVis;
+    if (moonSoft.current) moonSoft.current.opacity = .055 * moonVis;
   });
-  useEffect(() => () => mat.dispose(), [mat]);
+  useEffect(() => () => { mat.dispose(); starGeo.dispose(); }, [mat, starGeo]);
   const sunAt = useMemo(() => {
     const v = new THREE.Vector3(day.sunPos[0], Math.max(day.sunPos[1], 3), day.sunPos[2]).normalize().multiplyScalar(170);
     return [v.x, v.y, v.z] as [number, number, number];
   }, [day.sunPos[0], day.sunPos[1], day.sunPos[2]]);
+  // Moon rises opposite the sun — high and soft through the night.
+  const moonAt = useMemo(() => {
+    const opposite = new THREE.Vector3(-day.sunPos[0], Math.max(28, 62 - day.sunPos[1] * .35), -day.sunPos[2] * .65);
+    opposite.normalize().multiplyScalar(165);
+    return [opposite.x, opposite.y, opposite.z] as [number, number, number];
+  }, [day.sunPos[0], day.sunPos[1], day.sunPos[2]]);
   const sunOpacity = day.glow > .03 || (day.nightness > 0 && day.nightness < .88) ? 1 : 0;
+  const moonVisible = day.nightness > .4;
   return <group ref={root}>
     <mesh material={mat} renderOrder={-20} frustumCulled={false}><sphereGeometry args={[220, 32, 16]} /></mesh>
+    <points ref={starsRef} geometry={starGeo} renderOrder={-19} frustumCulled={false} visible={false}>
+      <pointsMaterial ref={starMat} color="#f4f1e8" size={1.4} sizeAttenuation={false} transparent opacity={0} depthWrite={false} fog={false} toneMapped={false} blending={THREE.AdditiveBlending} />
+    </points>
     <group position={sunAt} visible={sunOpacity > 0}>
       <mesh renderOrder={-19}><sphereGeometry args={[6 + day.glow * 3.5, 16, 12]} /><meshBasicMaterial color={day.sunColor} toneMapped={false} fog={false} depthWrite={false} /></mesh>
       <mesh renderOrder={-18}><sphereGeometry args={[13 + day.glow * 8, 16, 12]} /><meshBasicMaterial color="#f5d6b0" transparent opacity={.14 + day.glow * .2} depthWrite={false} toneMapped={false} fog={false} /></mesh>
       <mesh renderOrder={-17}><sphereGeometry args={[24 + day.glow * 14, 12, 10]} /><meshBasicMaterial color="#e8b892" transparent opacity={.05 + day.glow * .08} depthWrite={false} toneMapped={false} fog={false} /></mesh>
+    </group>
+    <group position={moonAt} visible={moonVisible}>
+      <mesh renderOrder={-16}><sphereGeometry args={[5.2, 20, 16]} /><meshBasicMaterial ref={moonMat} color="#f2eee2" transparent opacity={0} toneMapped={false} fog={false} depthWrite={false} /></mesh>
+      <mesh renderOrder={-15}><sphereGeometry args={[9.5, 16, 12]} /><meshBasicMaterial ref={moonHalo} color="#d8e0f0" transparent opacity={0} depthWrite={false} toneMapped={false} fog={false} /></mesh>
+      <mesh renderOrder={-14}><sphereGeometry args={[18, 12, 10]} /><meshBasicMaterial ref={moonSoft} color="#a8b8d0" transparent opacity={0} depthWrite={false} toneMapped={false} fog={false} /></mesh>
     </group>
   </group>;
 }
@@ -1335,6 +1384,7 @@ export const World = memo(function World({ reducedMotion, highQuality, day }: { 
     <directionalLight position={day.sunPos} color={day.sunColor} intensity={day.sun} castShadow={highQuality} shadow-mapSize={[1024, 1024]} shadow-camera-left={-60} shadow-camera-right={60} shadow-camera-top={60} shadow-camera-bottom={-60} shadow-camera-far={120} shadow-bias={-.0003} shadow-normalBias={.08} />
     {day.glow > .12 && <directionalLight position={[day.sunPos[0] * .4, Math.max(4, day.sunPos[1] * .35), day.sunPos[2] * .4]} color="#f0c49a" intensity={.28 * day.glow} />}
     {day.nightness > .35 && <ambientLight color="#2a3a48" intensity={.22 + day.nightness * .2} />}
+    {day.nightness > .45 && <directionalLight position={[-day.sunPos[0] * .5, 40, -day.sunPos[2] * .35]} color="#c8d4e8" intensity={.18 + day.nightness * .16} />}
     <Terrain />
     <Box at={[0, -.16, 2]} size={[33, .18, 36]} material={materials.stone} />
     <Box at={[0, -.14, -18]} size={[7, .2, 18]} material={materials.stone} />

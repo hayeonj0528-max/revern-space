@@ -124,8 +124,8 @@ function Controller({ firstPerson, reducedMotion, joined, day, onReady, onStats 
     motion.firstPerson = firstPerson;
     const lying = p?.activity === 'lying'; const hammock = !!p?.slot?.startsWith('hammock'); const sitting = p?.slot?.startsWith('tea') || p?.slot?.startsWith('spa') || p?.slot?.startsWith('sauna') || p?.slot?.startsWith('camp') || p?.slot?.startsWith('massage'); const yoga = p?.activity === 'yoga', saunaRest = p?.activity === 'sauna', teaRest = p?.zone === 'tea' && (!!p.slot || p.activity === 'pouring' || p.activity === 'drinking'), campRest = p?.zone === 'campfire' && !!p.slot, massageRest = !!p?.slot?.startsWith('massage');
     document.body.dataset.lying = lying ? '1' : '0';
-    // Face the pavilion ceiling when settling onto a tube.
-    if (lying && !wasLying.current) motion.pitch = -1.05;
+    // Tube → pavilion ceiling; hammock → open night sky.
+    if (lying && !wasLying.current) motion.pitch = hammock ? -1.28 : -1.05;
     wasLying.current = !!lying;
     const headY = groundHeightAt(motion.position.x, motion.position.z) + (hammock ? 1.12 : lying ? .55 : massageRest ? 1.15 : sitting ? 1.28 : yoga ? 1.4 : 1.63);
     target.current.set(motion.position.x, headY, motion.position.z);
@@ -134,13 +134,13 @@ function Controller({ firstPerson, reducedMotion, joined, day, onReady, onStats 
       desired.current.copy(target.current);
       const approach = resetCamera || reducedMotion ? 1 : 1 - Math.exp(-dt * 14); camera.position.lerp(desired.current, approach);
       if (lying) {
-        // Supine: look mostly upward at the roof; yaw still lets you glance around a little.
-        const lift = 3.4 - motion.pitch * 1.1;
-        const spread = Math.max(.08, Math.cos(Math.min(0, motion.pitch)));
+        // Supine: tubes face the roof; hammocks look straighter up into the sky.
+        const lift = (hammock ? 5.2 : 3.4) - motion.pitch * (hammock ? 1.35 : 1.1);
+        const spread = Math.max(hammock ? .04 : .08, Math.cos(Math.min(0, motion.pitch)));
         camera.lookAt(
-          camera.position.x - Math.sin(motion.yaw) * spread * .55,
+          camera.position.x - Math.sin(motion.yaw) * spread * (hammock ? .28 : .55),
           camera.position.y + lift,
-          camera.position.z - Math.cos(motion.yaw) * spread * .55
+          camera.position.z - Math.cos(motion.yaw) * spread * (hammock ? .28 : .55)
         );
       } else {
         camera.lookAt(camera.position.x - Math.sin(motion.yaw) * Math.cos(motion.pitch), camera.position.y - Math.sin(motion.pitch), camera.position.z - Math.cos(motion.yaw) * Math.cos(motion.pitch));
