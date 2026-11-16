@@ -525,6 +525,30 @@ function SaunaSteam({ reducedMotion }: { reducedMotion: boolean }) {
   });
   return <group ref={particles} visible={false} position={[SAUNA.heater[0], 0, SAUNA.heater[1]]}>{Array.from({ length: 12 }, (_, i) => <mesh key={i}><sphereGeometry args={[1, 12, 8]} /><meshBasicMaterial transparent opacity={0} color="#f3ead7" depthWrite={false} /></mesh>)}</group>;
 }
+/** Wall torch for the sauna doorway — warm flame, not a long cove bar. */
+function WallTorch({ at, phase = 0, reducedMotion = false }: { at: [number, number, number]; phase?: number; reducedMotion?: boolean }) {
+  const flame = useRef<THREE.MeshStandardMaterial>(null!);
+  const light = useRef<THREE.PointLight>(null!);
+  useFrame(({ clock }) => {
+    const flicker = reducedMotion ? 1 : .88 + Math.sin(clock.elapsedTime * 7.2 + phase) * .08 + Math.sin(clock.elapsedTime * 11.5 + phase * 1.7) * .05;
+    if (flame.current) flame.current.emissiveIntensity = 1.8 * flicker;
+    if (light.current) light.current.intensity = 5.2 * flicker;
+  });
+  return <group position={at}>
+    <Box at={[0, .55, 0]} size={[.08, 1.1, .08]} material={materials.darkWood} />
+    <Box at={[.18, 1.05, 0]} size={[.36, .08, .1]} material={materials.darkWood} />
+    <mesh position={[.32, 1.15, 0]} rotation={[0, 0, .15]}><cylinderGeometry args={[.05, .07, .22, 8]} /><meshStandardMaterial color="#3a2a1c" roughness={.95} /></mesh>
+    <mesh position={[.34, 1.42, 0]} scale={[.22, .42, .18]}>
+      <sphereGeometry args={[1, 10, 8]} />
+      <meshStandardMaterial ref={flame} color="#ff9a3a" emissive="#ff6a18" emissiveIntensity={1.8} roughness={.55} toneMapped={false} />
+    </mesh>
+    <mesh position={[.34, 1.62, 0]} scale={[.12, .28, .1]}>
+      <sphereGeometry args={[1, 8, 6]} />
+      <meshStandardMaterial color="#ffd080" emissive="#ffb040" emissiveIntensity={2.2} roughness={.4} toneMapped={false} transparent opacity={.85} />
+    </mesh>
+    <pointLight ref={light} position={[.4, 1.5, 0]} color="#ff9a4a" intensity={5.2} distance={7} decay={1.65} />
+  </group>;
+}
 function SaunaCabin({ reducedMotion }: { reducedMotion: boolean }) {
   return <group>
     <Box at={[55, -.12, 0]} size={[18, .32, 24]} material={materials.wood} />
@@ -563,12 +587,9 @@ function SaunaCabin({ reducedMotion }: { reducedMotion: boolean }) {
     <Sign title="나무의 온기, 잔잔한 쉼" subtitle="BENCHES & WARM STONES" at={[55, 2.9, 11.55]} yaw={Math.PI} near={14} />
     {[1, 5].map(z => <Box key={z} at={[45.78, 1.8, z]} size={[.2, 3.6, .2]} material={materials.wood} />)}
     <Box at={[45.78, 3.6, 3]} size={[.2, .2, 4.4]} material={materials.wood} />
-    {/* Soft exit wash — doorway readable when leaving toward the spa. */}
-    <CoveStrip at={[46.05, 3.42, 3]} size={[.12, .04, 3.6]} lit={.5} />
-    <WallWash at={[46.15, 1.55, 1.15]} yaw={-Math.PI / 2} width={1.1} lit={.4} />
-    <WallWash at={[46.15, 1.55, 4.85]} yaw={-Math.PI / 2} width={1.1} lit={.4} />
-    <pointLight position={[47.2, 2.4, 3]} color="#f5d6a8" intensity={3.6} distance={7} decay={1.7} />
-    <pointLight position={[46.4, 2.9, 3]} color="#ffc17b" intensity={2.8} distance={5.5} decay={1.75} />
+    {/* Doorway torches — flank the exit instead of a long cove bar. */}
+    <WallTorch at={[46.05, .55, 1.05]} phase={.4} reducedMotion={reducedMotion} />
+    <WallTorch at={[46.05, .55, 4.95]} phase={2.1} reducedMotion={reducedMotion} />
   </group>;
 }
 const Forest = memo(function Forest({ reducedMotion, highQuality }: { reducedMotion: boolean; highQuality: boolean }) {
