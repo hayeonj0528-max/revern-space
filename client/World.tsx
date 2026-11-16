@@ -1238,8 +1238,8 @@ export const World = memo(function World({ reducedMotion, highQuality, day }: { 
     {([[-11, 9], [11, 9], [-9, -12], [9, -12]] as const).map(([hx, hz], i) =>
       <HorongPole key={`horong-${hx}-${hz}`} at={[hx, 0, hz]} lit={lanternLit} phase={i * 1.4} reducedMotion={reducedMotion} highQuality={highQuality} />
     )}
-    {/* Spa approach street lamps — path/lounge only, never inside the baths. */}
-    {([[16.5, -8], [16.5, 2], [16.5, 10], [21.5, 5], [26.5, 8]] as const).map(([hx, hz], i) =>
+    {/* Spa approach street lamps — courtyard path only; keep cushion seats clear. */}
+    {([[16.5, -8], [16.5, 2], [16.5, 10]] as const).map(([hx, hz], i) =>
       <HorongPole key={`spa-lamp-${hx}-${hz}`} at={[hx, 0, hz]} lit={lanternLit} phase={2.1 + i * .7} reducedMotion={reducedMotion} highQuality={highQuality} street />
     )}
     {/* Yoga approach street lamps — light the east mouth, keep the mat hall clear. */}
@@ -1255,7 +1255,6 @@ export const World = memo(function World({ reducedMotion, highQuality, day }: { 
       <Box at={[side * 19, .7, 25]} size={[8, 1.4, .55]} material={materials.plaster} />
       <Box at={[side * 19, 1.45, 25]} size={[8.2, .12, .7]} material={materials.roof} />
     </group>)}
-    <pointLight position={[33, 3.2, 2]} color="#f8c284" intensity={(8 + 14 * lanternLit) * (highQuality ? 1 : .75)} distance={20} decay={1.5} />
-    <pointLight position={[30, 2.8, 8]} color="#ffd6a0" intensity={6 * lanternLit} distance={14} decay={1.5} />
+    <pointLight position={[33, 3.2, 0]} color="#f8c284" intensity={(6 + 10 * lanternLit) * (highQuality ? 1 : .75)} distance={18} decay={1.5} />
   </group>;
 });
