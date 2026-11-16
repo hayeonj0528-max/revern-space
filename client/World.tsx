@@ -70,32 +70,52 @@ function HanjiDoorPanel({ width, height }: { width: number; height: number }) {
     <Box at={[0, 0, 0]} size={[width - .12, .06, .06]} material={materials.wood} />
   </group>;
 }
-/** Tea entrance 분합문 — slides sideways when a visitor approaches. */
-function TeaSlidingDoors({ x, z, w, d, lift = 0 }: { x: number; z: number; w: number; d: number; lift?: number }) {
+/** Pair of 분합문 that slide sideways when a visitor walks up. */
+function SlidingHanjiPair({
+  at, doorW, doorH, nearX = 5.5, nearZMin, nearZMax, track = true
+}: {
+  at: [number, number, number];
+  doorW: number;
+  doorH: number;
+  nearX?: number;
+  nearZMin: number;
+  nearZMax: number;
+  track?: boolean;
+}) {
   const left = useRef<THREE.Group>(null!);
   const right = useRef<THREE.Group>(null!);
   const open = useRef(0);
-  const doorW = Math.min(3.4, w * .22);
-  const doorH = 3.7 + lift * .2;
-  const frontZ = z - d / 2;
   useFrame((_, dt) => {
     const s = network.getState();
     const self = s.snapshot?.players.find(p => p.id === s.id);
-    const near = !!self && Math.abs(self.x - x) < doorW * 1.7 && self.z > frontZ - 5 && self.z < frontZ + 4;
-    open.current = THREE.MathUtils.damp(open.current, near ? 1 : 0, reducedMotionDamp(near), dt);
+    const near = !!self && Math.abs(self.x - at[0]) < nearX && self.z > nearZMin && self.z < nearZMax;
+    open.current = THREE.MathUtils.damp(open.current, near ? 1 : 0, near ? 7 : 4.5, dt);
     const slide = open.current * (doorW * .95);
     if (left.current) left.current.position.x = -doorW * .52 - slide;
     if (right.current) right.current.position.x = doorW * .52 + slide;
   });
-  return <group position={[x, .9 + doorH / 2, frontZ + .06]}>
-    <Box at={[0, doorH / 2 + .06, 0]} size={[doorW * 2.35, .1, .14]} material={materials.wood} />
-    <Box at={[0, -doorH / 2 - .04, 0]} size={[doorW * 2.35, .08, .14]} material={materials.wood} />
+  return <group position={at}>
+    {track && <>
+      <Box at={[0, doorH / 2 + .06, 0]} size={[doorW * 2.35, .1, .14]} material={materials.wood} />
+      <Box at={[0, -doorH / 2 - .04, 0]} size={[doorW * 2.35, .08, .14]} material={materials.wood} />
+    </>}
     <group ref={left}><HanjiDoorPanel width={doorW} height={doorH} /></group>
     <group ref={right}><HanjiDoorPanel width={doorW} height={doorH} /></group>
   </group>;
 }
-function reducedMotionDamp(near: boolean) {
-  return near ? 7 : 4.5;
+/** Tea entrance 분합문 — slides sideways when a visitor approaches. */
+function TeaSlidingDoors({ x, z, w, d, lift = 0 }: { x: number; z: number; w: number; d: number; lift?: number }) {
+  const doorW = Math.min(3.4, w * .22);
+  const doorH = 3.7 + lift * .2;
+  const frontZ = z - d / 2;
+  return <SlidingHanjiPair
+    at={[x, .9 + doorH / 2, frontZ + .06]}
+    doorW={doorW}
+    doorH={doorH}
+    nearX={doorW * 1.7}
+    nearZMin={frontZ - 5}
+    nearZMax={frontZ + 4}
+  />;
 }
 /** Tall 한지 분합문 panels on a pavilion wall. */
 function HanjiWall({ wall, center, lift = 0 }: { wall: typeof COLLIDERS[number]; center: [number, number]; lift?: number }) {
@@ -312,13 +332,17 @@ function EntranceGate() {
     <Box at={[0, 3.72, .14]} size={[9.5, .08, .12]} material={materials.dancheongBlue} shadow={false} />
     <Box at={[0, 3.62, .12]} size={[9.5, .05, .1]} material={materials.dancheongGreen} shadow={false} />
     <Box at={[0, 3.54, .1]} size={[9.5, .04, .08]} material={materials.dancheongRed} shadow={false} />
-    {/* 문지방 + 창호 판문 */}
+    {/* 문지방 + 창호 판문 — also slides open on approach (tea has a second pair behind). */}
     <Box at={[0, .14, 0]} size={[8.9, .22, .6]} material={materials.stone} />
-    {[-1.55, 1.55].map(sx => (
-      <group key={sx} position={[sx, 1.95, .04]} rotation={[0, 0, 0]}>
-        <HanjiDoorPanel width={2.85} height={3.55} />
-      </group>
-    ))}
+    <SlidingHanjiPair
+      at={[0, 1.95, .04]}
+      doorW={5.8}
+      doorH={3.55}
+      nearX={6.5}
+      nearZMin={21}
+      nearZMax={30}
+      track={false}
+    />
     <mesh position={[0, -1.25, 0]} geometry={geometry} material={materials.roof} castShadow />
     <group position={[0, 0, 0]}><CornerRidges w={9.2} d={2.8} lift={0} short /></group>
     <Sign title="REVERN" subtitle="나에게 돌아오는 문" at={[0, 5.55, .45]} />
