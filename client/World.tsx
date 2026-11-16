@@ -1234,8 +1234,8 @@ export const World = memo(function World({ reducedMotion, highQuality, day }: { 
     {([[-11, 9], [11, 9], [-9, -12], [9, -12]] as const).map(([hx, hz], i) =>
       <HorongPole key={`horong-${hx}-${hz}`} at={[hx, 0, hz]} lit={lanternLit} phase={i * 1.4} reducedMotion={reducedMotion} highQuality={highQuality} />
     )}
-    {/* Spa approach street lamps — east path was too dark after dusk. */}
-    {([[16.5, -8], [16.5, 2], [16.5, 10], [21.5, -6], [21.5, 5], [26.5, -9], [26.5, 8]] as const).map(([hx, hz], i) =>
+    {/* Spa approach street lamps — path/lounge only, never inside the baths. */}
+    {([[16.5, -8], [16.5, 2], [16.5, 10], [21.5, 5], [26.5, 8]] as const).map(([hx, hz], i) =>
       <HorongPole key={`spa-lamp-${hx}-${hz}`} at={[hx, 0, hz]} lit={lanternLit} phase={2.1 + i * .7} reducedMotion={reducedMotion} highQuality={highQuality} street />
     )}
     <Sign title="REVERN" subtitle="잠시, 나에게 돌아오는 시간" at={[9, 1.7, 21]} yaw={-.35} />
@@ -1244,8 +1244,7 @@ export const World = memo(function World({ reducedMotion, highQuality, day }: { 
       <Box at={[side * 19, .7, 25]} size={[8, 1.4, .55]} material={materials.plaster} />
       <Box at={[side * 19, 1.45, 25]} size={[8.2, .12, .7]} material={materials.roof} />
     </group>)}
-    <pointLight position={[33, 3.2, 0]} color="#f8c284" intensity={(8 + 14 * lanternLit) * (highQuality ? 1 : .75)} distance={22} decay={1.5} />
-    <pointLight position={[30, 2.8, -8]} color="#ffd6a0" intensity={6 * lanternLit} distance={14} decay={1.5} />
+    <pointLight position={[33, 3.2, 2]} color="#f8c284" intensity={(8 + 14 * lanternLit) * (highQuality ? 1 : .75)} distance={20} decay={1.5} />
     <pointLight position={[30, 2.8, 8]} color="#ffd6a0" intensity={6 * lanternLit} distance={14} decay={1.5} />
   </group>;
 });
