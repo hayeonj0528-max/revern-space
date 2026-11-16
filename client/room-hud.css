@@ -32,6 +32,8 @@
 .shop-pay-choices,.shop-checkout{display:flex;flex-direction:column;gap:7px;width:100%}
 .shop-pay-intro,.shop-checkout p{margin:0;font-size:11px;line-height:1.65}
 .shop-kakao-amount{font-size:12px}
+.shop-kakao-link{align-self:center;font-size:11px;color:#4a5c3f;text-decoration:underline;text-underline-offset:2px}
+.night .shop-kakao-link{color:#c5d4b8}
 .shop-qr{width:100%;max-width:220px;aspect-ratio:1;object-fit:contain;align-self:center;border-radius:6px;background:#fff;border:1px solid #80937335;padding:8px}
 .shop-qr-missing{display:flex;flex-direction:column;gap:4px;padding:12px;border:1px dashed #80937355;border-radius:6px;background:#f7f5eb80;font-size:11px;line-height:1.55}
 .shop-toast{margin:0}

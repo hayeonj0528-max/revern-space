@@ -110,8 +110,8 @@ Vercel은 WebSocket 상시 서버에 적합하지 않습니다. 정적 프론트
 # 비밀 파일이 추적되지 않는지
 git check-ignore -v .env node_modules dist
 
-# 스테이징 전에 개인 송금 QR 공개 여부 검토
-# public/shop/kakao-remit-qr.png — 개인 카카오페이 QR이면 공개 저장소 전에 제거하거나 비공개 저장소를 사용하세요.
+# 스테이징 전에 개인 카카오 송금 링크·QR 공개 여부 검토
+# shared/shop.ts kakaoRemitUrl · public/shop/kakao-remit-qr.png
 ```
 
 `.env.example`만 참고용으로 커밋합니다. API 키 필드는 없습니다.
@@ -124,4 +124,4 @@ git check-ignore -v .env node_modules dist
 - [ ] 서로 다른 브라우저 두 개로 동기화
 - [ ] 모바일 Safari/Chrome 터치·오디오
 - [ ] 인스턴스 1개 유지 (수평 확장 시 방이 갈라짐)
-- [ ] 개인 송금 QR·저작권 음원 라이선스 확인 (`ASSET_SOURCES.md`, `public/audio/music/ATTRIBUTION.md`)
+- [ ] 개인 카카오 송금 링크·QR·저작권 음원 라이선스 확인 (`ASSET_SOURCES.md`, `public/audio/music/ATTRIBUTION.md`)

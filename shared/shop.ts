@@ -7,9 +7,11 @@ export const SHOP = {
   reach: 3.6,
   name: '숲속 매점',
   english: 'SNACK STAND',
-  /** Drop your KakaoTalk remittance QR here (PNG/JPG/WebP). */
+  /** Decoded from public/shop/kakao-remit-qr.png — opens Kakao Pay remittance. */
+  kakaoRemitUrl: 'https://qr.kakaopay.com/281006011112499622003768',
+  /** Optional QR fallback for devices that cannot open KakaoTalk. */
   kakaoQrSrc: '/shop/kakao-remit-qr.png',
-  kakaoHint: '카카오톡 송금 QR을 스캔해 주세요. 실제 송금은 카카오톡에서 이뤄집니다.'
+  kakaoHint: '버튼을 누르면 카카오톡 송금으로 바로 연결돼요. 앱이 안 열리면 같은 버튼을 다시 눌러 주세요.'
 } as const;
 
 export type ShopItemId = 'ramen' | 'egg' | 'sikhye';
@@ -29,4 +31,12 @@ export type PayMode = 'metaverse' | 'kakao';
 
 export function formatWon(n: number) {
   return `${n.toLocaleString('ko-KR')}원`;
+}
+
+/** Kakao Pay remittance link, optionally with the item amount pre-filled. */
+export function kakaoRemitUrl(amount?: number) {
+  const base = SHOP.kakaoRemitUrl;
+  if (!amount || amount < 1) return base;
+  // Amount is encoded as (won * 2^19) in hex after the pay code.
+  return `${base}${(amount * 524288).toString(16)}`;
 }
