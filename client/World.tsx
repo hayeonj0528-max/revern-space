@@ -20,7 +20,7 @@ function roofGeometry(w: number, d: number, lift = 0, opts?: { shallow?: boolean
   const vertices: number[] = [], uvs: number[] = [], indices: number[] = []; const nx = 36, nz = 36;
   const shallow = !!opts?.shallow;
   const flush = opts?.flushFace;
-  const sidePad = shallow ? 1.35 : 5.1;
+  const sidePad = shallow ? .2 : 5.1;
   const ew = w + sidePad, ed = d + (flush != null ? sidePad : sidePad);
   const hipDrop = shallow ? 2.55 : 4.05, cornerLift = shallow || flush != null ? 0 : 2.85;
   for (let j = 0; j <= nz; j++) for (let i = 0; i <= nx; i++) {
@@ -156,31 +156,21 @@ function Pavilion({ id, lit = 0, reducedMotion = false }: { id: Exclude<ZoneId, 
       <Box at={[c.x, 2.5 + lift / 2, c.z]} size={[c.w + .12, .12, c.d + .12]} material={materials.wood} />
       {id === 'tea' || id === 'yoga' ? <HanjiWall wall={c} center={r.center} lift={lift} /> : <Lattice wall={c} center={r.center} />}
     </group>)}
-    {postTs.map(t => <group key={t} position={[alongX ? x + w * t : x + w / 2 * openSide, 0, alongX ? z + d / 2 * openSide : z + d * t]}>
+    {/* Tea keeps the north mouth open — no porch posts / 가림막 doors that block the onsen view. */}
+    {id !== 'tea' && postTs.map(t => <group key={t} position={[alongX ? x + w * t : x + w / 2 * openSide, 0, alongX ? z + d / 2 * openSide : z + d * t]}>
       <Box at={[0, .22, 0]} size={[.9, .44, .9]} material={materials.stone} />
       <Box at={[0, postH / 2 + .2, 0]} size={[.4, postH, .4]} material={materials.wood} />
       <Box at={[0, beam - .17, 0]} size={alongX ? [1.55, .24, .72] : [.72, .24, 1.55]} material={materials.wood} />
     </group>)}
-    {id === 'tea' && ([[-.5, -.25], [.25, .5]] as const).map(([t, t2]) => {
-      // Outer bays only — keep the center aisle open to walk in.
-      const mid = (t + t2) / 2;
-      const px = alongX ? x + w * mid : x + w / 2 * openSide;
-      const pz = alongX ? z + d / 2 * openSide : z + d * mid;
-      const insetX = alongX ? 0 : -openSide * .12;
-      const insetZ = alongX ? -openSide * .12 : 0;
-      const yaw = alongX ? (openSide > 0 ? 0 : Math.PI) : (openSide > 0 ? -Math.PI / 2 : Math.PI / 2);
-      const panelW = (alongX ? w : d) * Math.abs(t2 - t) - .35;
-      return <group key={`front-door-${t}`} position={[px + insetX, 2.05, pz + insetZ]} rotation={[0, yaw, 0]}>
-        <HanjiDoorPanel width={panelW} height={3.9} />
-      </group>;
-    })}
     <Box at={[x, beam, z - d / 2]} size={[w + .9, .32, .34]} material={materials.wood} />
     <Box at={[x, beam, z + d / 2]} size={[w + .9, .32, .34]} material={materials.wood} />
     <Box at={[x - w / 2, beam, z]} size={[.34, .32, d + .9]} material={materials.wood} />
     <Box at={[x + w / 2, beam, z]} size={[.34, .32, d + .9]} material={materials.wood} />
-    {/* Quiet 단청 band under the eave beam — spa-scale, not palace coverage. */}
-    <Box at={[x, beam - .2, z - d / 2 + .02]} size={[w + .7, .08, .1]} material={materials.dancheongBlue} shadow={false} />
-    <Box at={[x, beam - .28, z - d / 2 + .02]} size={[w + .7, .05, .08]} material={materials.dancheongGreen} shadow={false} />
+    {/* Quiet 단청 under closed eaves only — skip tea's open north face. */}
+    {id !== 'tea' && <>
+      <Box at={[x, beam - .2, z - d / 2 + .02]} size={[w + .7, .08, .1]} material={materials.dancheongBlue} shadow={false} />
+      <Box at={[x, beam - .28, z - d / 2 + .02]} size={[w + .7, .05, .08]} material={materials.dancheongGreen} shadow={false} />
+    </>}
     <Box at={[x, beam - .2, z + d / 2 - .02]} size={[w + .7, .08, .1]} material={materials.dancheongBlue} shadow={false} />
     <Box at={[x, beam - .28, z + d / 2 - .02]} size={[w + .7, .05, .08]} material={materials.dancheongGreen} shadow={false} />
     {Array.from({ length: Math.ceil(w / 1.15) }, (_, i) => {
@@ -194,7 +184,7 @@ function Pavilion({ id, lit = 0, reducedMotion = false }: { id: Exclude<ZoneId, 
     <Box at={[x, 7.62 + lift, z]} size={[w * .92, .28, .42]} material={materials.roof} />
     <Box at={[x, 7.78 + lift, z]} size={[w * .88, .2, .5]} material={materials.roof} />
     <Box at={[x, 7.92 + lift, z]} size={[w * .84, .12, .58]} material={materials.roof} />
-    {[-1, 1].map(side => <group key={side} position={[x + side * w * .45, 7.98 + lift, z]}>
+    {id !== 'tea' && [-1, 1].map(side => <group key={side} position={[x + side * w * .45, 7.98 + lift, z]}>
       <Box at={[0, 0, 0]} size={[.42, .48, .68]} material={materials.roof} />
       <Box at={[side * .16, .26, 0]} size={[.16, .2, .45]} material={materials.roof} />
       <Box at={[side * .05, .42, 0]} size={[.1, .14, .22]} material={materials.dancheongRed} shadow={false} />
@@ -211,7 +201,7 @@ function Pavilion({ id, lit = 0, reducedMotion = false }: { id: Exclude<ZoneId, 
       <pointLight position={[x, 2.2, z]} color={bright ? '#ffe9c4' : '#ead9bc'} intensity={(bright ? 9 : 4.5) * softLit} distance={Math.max(w, d) * (bright ? .75 : .55)} decay={1.5} />
       {bright && <>
         <pointLight position={[alongX ? x - 5 : x, 2.6, alongX ? z : z - 4]} color="#fff0d8" intensity={7 * softLit} distance={11} decay={1.45} />
-        {postTs.slice(0, 2).map(t => {
+        {id !== 'tea' && postTs.slice(0, 2).map(t => {
           const px = alongX ? x + w * t : x + w / 2 * openSide;
           const pz = alongX ? z + d / 2 * openSide : z + d * t;
           const insetX = alongX ? 0 : -openSide * .5;
@@ -754,21 +744,22 @@ function BambooGrove() {
         data.push({ x: qx, z: qz, h: 5.2 + rand() * 3.8, lean: (rand() - .5) * .035, phase: rand() * 8, thick: .048 + rand() * .032 });
       }
     };
-    // Lighter path planting — fewer culms so the approach reads as a Korean garden path, not a bamboo tunnel.
-    for (let t = .08; t <= .78; t += .08) {
+    // Bamboo hedges hug the narrower center path — stop before the onsen apron.
+    for (let t = .05; t <= .82; t += .045) {
       const cx = fx + pdx * t, cz = fz + pdz * t;
-      for (const d of [2.4, 3.5]) {
-        push(cx + px * d + (rand() - .5) * .08, cz + pz * d, 1, true);
-        push(cx - px * d + (rand() - .5) * .08, cz - pz * d, 1, true);
+      for (const d of [1.9, 2.7, 3.6]) {
+        push(cx + px * d + (rand() - .5) * .05, cz + pz * d, 1, true);
+        push(cx - px * d + (rand() - .5) * .05, cz - pz * d, 1, true);
       }
     }
-    // Sparse ring outside the stone apron.
-    for (let a = 0; a < Math.PI * 2; a += .28) {
-      const r = 10.2;
-      const bx = ONSEN.x + Math.cos(a) * r, bz = ONSEN.z + Math.sin(a) * r;
-      if (bz < ONSEN.z - 2.4) continue; // keep south entrance open
-      if (onOnsenWalk(bx, bz) || inOnsenClearing(bx, bz)) continue;
-      push(bx, bz, 1);
+    // Ring sits outside the deck so culms frame the clearing, not the water.
+    for (let a = 0; a < Math.PI * 2; a += .16) {
+      for (const r of [9.0, 10.6]) {
+        const bx = ONSEN.x + Math.cos(a) * r, bz = ONSEN.z + Math.sin(a) * r;
+        if (bz < ONSEN.z - 2.4) continue; // keep south entrance open
+        if (onOnsenWalk(bx, bz) || inOnsenClearing(bx, bz)) continue;
+        push(bx, bz, 1);
+      }
     }
     return data;
   }, []);

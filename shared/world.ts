@@ -158,7 +158,8 @@ for (const id of PAVILION_ZONES) {
   if (open !== 'north') COLLIDERS.push({ x, z: z - d / 2, w, d: .4, height: 5.1 });
   if (open !== 'south') COLLIDERS.push({ x, z: z + d / 2, w, d: .4, height: 5.1 });
   const alongX = open === 'north' || open === 'south';
-  for (const t of [-.5, -.25, .25, .5]) {
+  // Tea keeps its open north mouth clear — no porch-post colliders blocking the approach.
+  if (id !== 'tea') for (const t of [-.5, -.25, .25, .5]) {
     COLLIDERS.push({ x: alongX ? x + w * t : x + (open === 'east' ? w / 2 : -w / 2), z: alongX ? z + (open === 'south' ? d / 2 : -d / 2) : z + d * t, w: .5, d: .5, height: 5.1 });
   }
 }
