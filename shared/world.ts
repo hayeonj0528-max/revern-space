@@ -54,7 +54,7 @@ export type Player = {
   drink: DrinkId | null;
   marshmallow: Marshmallow;
 };
-export type Slot = { id: string; zone: ZoneId; kind: 'mat' | 'tube' | 'seat' | 'sauna-bench' | 'log' | 'hammock'; x: number; z: number; yaw: number; exit: [number, number] };
+export type Slot = { id: string; zone: ZoneId; kind: 'mat' | 'tube' | 'seat' | 'sauna-bench' | 'log' | 'hammock' | 'massage'; x: number; z: number; yaw: number; exit: [number, number] };
 export type Snapshot = {
   type: 'state';
   now: number;
@@ -115,6 +115,9 @@ const CAMP_LOGS: [number, number][] = Array.from({ length: 6 }, (_, i) => {
 
 export const SLOTS: Slot[] = [
   ...Array.from({ length: 12 }, (_, i): Slot => { const x = -38 + (i % 4) * 4.1, z = -4.8 + Math.floor(i / 4) * 4.8; return { id: `mat-${i}`, zone: 'yoga', kind: 'mat', x, z, yaw: 0, exit: [x + 1, z + 1.7] }; }),
+  // Bodyfriend full-body chairs — west wall of the yoga pavilion, facing the mats.
+  { id: 'massage-0', zone: 'yoga', kind: 'massage', x: -43.2, z: -6.4, yaw: -Math.PI / 2, exit: [-40.5, -6.4] },
+  { id: 'massage-1', zone: 'yoga', kind: 'massage', x: -43.2, z: 6.4, yaw: -Math.PI / 2, exit: [-40.5, 6.4] },
   ...Array.from({ length: 8 }, (_, i): Slot => ({ id: `tube-${i}`, zone: 'floating', kind: 'tube', x: -9 + (i % 4) * 6, z: -35 - Math.floor(i / 4) * 10, yaw: 0, exit: [0, -28] })),
   ...Array.from({ length: 6 }, (_, i): Slot => ({ id: `spa-${i}`, zone: 'spa', kind: 'seat', x: 24 + (i % 3) * 7, z: 7 + Math.floor(i / 3) * 2.5, yaw: 0, exit: [21, 4] })),
   ...Array.from({ length: 6 }, (_, i): Slot => ({ id: `sauna-${i}`, zone: 'sauna', kind: 'sauna-bench', x: 59.75, z: -8 + i * 3.2, yaw: Math.atan2(59.75 - SAUNA.heater[0], -8 + i * 3.2 - SAUNA.heater[1]), exit: [58.2, -8 + i * 3.2] })),
@@ -135,10 +138,20 @@ export const SLOTS: Slot[] = [
   // Hammock slots are appended after onsen colliders (see below).
 ];
 export const YOGA_INTERACTION_RADIUS = 2.3;
+export const MASSAGE_INTERACTION_RADIUS = 3.2;
 export function nearbyYogaMat(x: number, z: number, occupancy: Record<string, string>) {
   let nearest: Slot | undefined; let distance = YOGA_INTERACTION_RADIUS;
   for (const slot of SLOTS) {
     if (slot.kind !== 'mat' || occupancy[slot.id]) continue;
+    const d = Math.hypot(x - slot.x, z - slot.z);
+    if (d <= distance) { nearest = slot; distance = d; }
+  }
+  return nearest;
+}
+export function nearbyMassage(x: number, z: number, occupancy: Record<string, string>) {
+  let nearest: Slot | undefined; let distance = MASSAGE_INTERACTION_RADIUS;
+  for (const slot of SLOTS) {
+    if (slot.kind !== 'massage' || occupancy[slot.id]) continue;
     const d = Math.hypot(x - slot.x, z - slot.z);
     if (d <= distance) { nearest = slot; distance = d; }
   }
@@ -213,6 +226,10 @@ for (const side of [-1, 1]) { COLLIDERS.push({ x: side * 5.5, z: 17, w: .5, d: .
 
 // Courtyard snack stall — south of onsen approach (yaw 0 → counter along X)
 COLLIDERS.push({ x: 12.4, z: 11.15, w: 2.85, d: 1.15, height: 1.15 });
+// Bodyfriend chairs — deep along X (yaw −π/2), wide along Z.
+for (const slot of SLOTS.filter(s => s.kind === 'massage')) {
+  COLLIDERS.push({ x: slot.x, z: slot.z, w: 1.9, d: 1.15, height: 1.25 });
+}
 
 export function isWalkable(x: number, z: number) {
   if (!Number.isFinite(x) || !Number.isFinite(z) || x < WORLD.minX || x > WORLD.maxX || z < WORLD.minZ || z > WORLD.maxZ) return false;

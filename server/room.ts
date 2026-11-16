@@ -124,6 +124,7 @@ export class Room {
         if (!slot || slot.zone !== zoneAt(p.x, p.z)) return this.error(s, '먼저 해당 공간 안으로 들어와 주세요.');
         if (this.occupancy[slot.id] === id) return;
         if (slot.kind === 'mat' && Math.hypot(p.x - slot.x, p.z - slot.z) > YOGA_INTERACTION_RADIUS) return this.error(s, '빈 매트 가까이로 걸어가 주세요.');
+        if (slot.kind === 'massage' && Math.hypot(p.x - slot.x, p.z - slot.z) > 3.2) return this.error(s, '바디프렌드 마사지기 가까이로 걸어가 주세요.');
         if (slot.kind === 'sauna-bench' && Math.hypot(p.x - slot.x, p.z - slot.z) > 3) return this.error(s, '빈 목재 벤치 가까이로 걸어가 주세요.');
         if (slot.kind === 'log' && Math.hypot(p.x - slot.x, p.z - slot.z) > 3) return this.error(s, '빈 통나무 가까이로 걸어가 주세요.');
         if (slot.kind === 'hammock' && Math.hypot(p.x - slot.x, p.z - slot.z) > 3.2) return this.error(s, '빈 그물침대 가까이로 걸어가 주세요.');

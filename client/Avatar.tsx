@@ -41,7 +41,8 @@ export function Avatar({ player, self = false, guide = false, reducedMotion = fa
     const state = network.getState();
     const lying = p.activity === 'lying';
     const hammock = !!p.slot?.startsWith('hammock');
-    const seated = p.activity === 'sitting' || p.activity === 'sauna' || p.activity === 'roasting' || !!(p.slot?.startsWith('tea') || p.slot?.startsWith('spa') || p.slot?.startsWith('camp'));
+    const massage = !!p.slot?.startsWith('massage');
+    const seated = p.activity === 'sitting' || p.activity === 'sauna' || p.activity === 'roasting' || !!(p.slot?.startsWith('tea') || p.slot?.startsWith('spa') || p.slot?.startsWith('camp') || massage);
     root.current.visible = !self || (!motion.firstPerson && motion.cameraDistance > .9);
     let x = p.x, z = p.z, yaw = p.yaw;
     if (self) { x = motion.position.x; z = motion.position.z; yaw = p.slot ? p.yaw : motion.facingYaw; }
@@ -74,8 +75,8 @@ export function Avatar({ player, self = false, guide = false, reducedMotion = fa
       body.current.rotation.set(-Math.PI / 2 + .08, 0, 0);
       body.current.position.set(0, .18 + breathe, .08);
     } else {
-      body.current.rotation.set(lying ? -Math.PI / 2 : 0, 0, 0);
-      body.current.position.set(0, lying ? .7 + (reducedMotion ? 0 : Math.sin(t * .65 + p.x) * .025) : seated ? -.25 : 0, lying ? .75 : 0);
+      body.current.rotation.set(lying ? -Math.PI / 2 : massage ? -.42 : 0, 0, 0);
+      body.current.position.set(0, lying ? .7 + (reducedMotion ? 0 : Math.sin(t * .65 + p.x) * .025) : seated ? (massage ? -.08 : -.25) : 0, lying ? .75 : massage ? .12 : 0);
     }
     upper.current.rotation.set(0, 0, 0);
     let la = 0, ra = 0, lx = 0, rx = 0, leg = seated ? Math.PI / 2 : 0;
@@ -102,6 +103,7 @@ export function Avatar({ player, self = false, guide = false, reducedMotion = fa
       rightLeg.current.rotation.set(pose.rightLegX, pose.rightLegY, pose.rightLegZ);
       leftKnee.current.rotation.x = pose.leftKnee; rightKnee.current.rotation.x = pose.rightKnee;
     }
+    if (massage) { lx = .5; la = .62; rx = .5; ra = -.62; leftKnee.current.rotation.x = rightKnee.current.rotation.x = -.85; }
     if (p.activity === 'drinking') { rx = 2.2 + Math.sin(t * 2) * .07; ra = -.2; }
     if (p.activity === 'pouring') { rx = 1.4; ra = -.35; lx = 1.1; }
     if (p.activity === 'roasting' || p.marshmallow === 'ready') {
@@ -124,7 +126,7 @@ export function Avatar({ player, self = false, guide = false, reducedMotion = fa
       const target = p.marshmallow === 'ready' ? '#c48a4a' : '#f3e6c8';
       marshmallowMat.current.color.lerp(new THREE.Color(target), 1 - Math.exp(-dt * 1.6));
     }
-    if (p.activity === 'bathing' || p.activity === 'sauna') upper.current.rotation.x = Math.sin(t * .8) * .012;
+    if (p.activity === 'bathing' || p.activity === 'sauna' || massage) upper.current.rotation.x = Math.sin(t * .8) * .012;
     name.current.visible = !self && !hideNames && camera.position.distanceTo(root.current.position) < 22;
     root.current.scale.setScalar(p.connected ? 1 : .94);
   });

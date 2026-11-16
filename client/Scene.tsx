@@ -122,12 +122,12 @@ function Controller({ firstPerson, reducedMotion, joined, day, onReady, onStats 
     const input = `${dx.toFixed(3)},${dz.toFixed(3)}`;
     if (joined && (performance.now() - lastSend.current > 50 || input !== lastInput.current)) { network.send({ type: 'move', dx, dz, yaw: motion.facingYaw }); lastSend.current = performance.now(); lastInput.current = input; }
     motion.firstPerson = firstPerson;
-    const lying = p?.activity === 'lying'; const hammock = !!p?.slot?.startsWith('hammock'); const sitting = p?.slot?.startsWith('tea') || p?.slot?.startsWith('spa') || p?.slot?.startsWith('sauna') || p?.slot?.startsWith('camp'); const yoga = p?.activity === 'yoga', saunaRest = p?.activity === 'sauna', teaRest = p?.zone === 'tea' && (!!p.slot || p.activity === 'pouring' || p.activity === 'drinking'), campRest = p?.zone === 'campfire' && !!p.slot;
+    const lying = p?.activity === 'lying'; const hammock = !!p?.slot?.startsWith('hammock'); const sitting = p?.slot?.startsWith('tea') || p?.slot?.startsWith('spa') || p?.slot?.startsWith('sauna') || p?.slot?.startsWith('camp') || p?.slot?.startsWith('massage'); const yoga = p?.activity === 'yoga', saunaRest = p?.activity === 'sauna', teaRest = p?.zone === 'tea' && (!!p.slot || p.activity === 'pouring' || p.activity === 'drinking'), campRest = p?.zone === 'campfire' && !!p.slot, massageRest = !!p?.slot?.startsWith('massage');
     document.body.dataset.lying = lying ? '1' : '0';
     // Face the pavilion ceiling when settling onto a tube.
     if (lying && !wasLying.current) motion.pitch = -1.05;
     wasLying.current = !!lying;
-    const headY = groundHeightAt(motion.position.x, motion.position.z) + (hammock ? 1.12 : lying ? .55 : sitting ? 1.28 : yoga ? 1.4 : 1.63);
+    const headY = groundHeightAt(motion.position.x, motion.position.z) + (hammock ? 1.12 : lying ? .55 : massageRest ? 1.15 : sitting ? 1.28 : yoga ? 1.4 : 1.63);
     target.current.set(motion.position.x, headY, motion.position.z);
     let distance = 5.2;
     if (firstPerson) {
@@ -147,7 +147,7 @@ function Controller({ firstPerson, reducedMotion, joined, day, onReady, onStats 
       }
     } else {
       desired.current.set(Math.sin(motion.yaw) * (hammock ? 4.4 : lying ? 2.4 : campRest ? 3.6 : 5.2), (hammock ? 1.45 : lying ? 3.4 : campRest ? 1.55 : 1.9) + motion.pitch * 2.2, Math.cos(motion.yaw) * (hammock ? 4.4 : lying ? 2.4 : campRest ? 3.6 : 5.2)).add(target.current);
-      if (yoga || saunaRest || teaRest || campRest) { const shoulder = teaRest ? -1.7 : campRest ? 0 : 1.7; desired.current.x += Math.cos(motion.yaw) * shoulder; desired.current.z -= Math.sin(motion.yaw) * shoulder; }
+      if (yoga || saunaRest || teaRest || campRest || massageRest) { const shoulder = teaRest ? -1.7 : campRest || massageRest ? 0 : 1.7; desired.current.x += Math.cos(motion.yaw) * shoulder; desired.current.z -= Math.sin(motion.yaw) * shoulder; }
       offset.current.copy(desired.current).sub(target.current).normalize();
       ray.current.set(target.current, offset.current);
       boxes.current.forEach(box => { if (ray.current.intersectBox(box, hit.current)) { const hitLen = hit.current.distanceTo(target.current) - .2; if (hitLen > .05) distance = Math.min(distance, hitLen); } });
@@ -155,7 +155,7 @@ function Controller({ firstPerson, reducedMotion, joined, day, onReady, onStats 
       // Keep the follow camera below the interior beams.
       desired.current.y = Math.min(p?.zone === 'sauna' ? 3.5 : 4.65, desired.current.y);
       camera.position.lerp(desired.current, resetCamera || reducedMotion ? 1 : 1 - Math.exp(-dt * 10));
-      if (yoga || saunaRest || teaRest || campRest) { target.current.x -= Math.sin(motion.yaw) * (campRest ? 2.4 : 1.8); target.current.z -= Math.cos(motion.yaw) * (campRest ? 2.4 : 1.8); }
+      if (yoga || saunaRest || teaRest || campRest || massageRest) { target.current.x -= Math.sin(motion.yaw) * (campRest || massageRest ? 2.4 : 1.8); target.current.z -= Math.cos(motion.yaw) * (campRest || massageRest ? 2.4 : 1.8); }
       if (teaRest) { target.current.x += Math.cos(motion.yaw) * 1.2; target.current.z -= Math.sin(motion.yaw) * 1.2; }
       if (campRest) target.current.y -= .35;
       camera.lookAt(target.current);

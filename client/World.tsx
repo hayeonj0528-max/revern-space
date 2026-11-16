@@ -2,7 +2,7 @@ import { memo, useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { Reflector } from 'three/addons/objects/Reflector.js';
-import { COLLIDERS, SLOTS, TEA_LIBRARY, TEAS, ZONES, nearbyYogaMat, type Slot, type ZoneId } from '../shared/world';
+import { COLLIDERS, SLOTS, TEA_LIBRARY, TEAS, ZONES, nearbyMassage, nearbyYogaMat, type Slot, type ZoneId } from '../shared/world';
 import { SPA_BATHS, SAUNA } from '../shared/spa';
 import { ONSEN, ONSEN_HAMMOCKS, ONSEN_PATH, onBambooPath, onOnsenWalk, onsenPathLength, onsenPathYaw } from '../shared/onsen';
 import { SHOP } from '../shared/shop';
@@ -660,6 +660,55 @@ function YogaMat({ slot, index }: { slot: Slot; index: number }) {
     </group>
   </group>;
 }
+/** Bodyfriend-style full-body massage chair — local forward is −Z (matches slot yaw). */
+function BodyfriendMassageChair({ slot }: { slot: Slot }) {
+  const outline = useRef<THREE.Group>(null!);
+  const leather = useRef<THREE.MeshStandardMaterial>(null!);
+  const colors = useMemo(() => ({ idle: new THREE.Color('#2a2624'), near: new THREE.Color('#3a342f'), occupied: new THREE.Color('#1f1c1a') }), []);
+  useFrame((_, dt) => {
+    const state = network.getState(), self = state.snapshot?.players.find(p => p.id === state.id);
+    const nearest = self?.zone === 'yoga' && !self.slot ? nearbyMassage(motion.position.x, motion.position.z, state.snapshot?.occupancy ?? {}) : undefined;
+    const near = nearest?.id === slot.id;
+    const occupied = !!state.snapshot?.occupancy[slot.id];
+    leather.current.color.lerp(near ? colors.near : occupied ? colors.occupied : colors.idle, 1 - Math.exp(-dt * 12));
+    leather.current.emissiveIntensity = near ? .06 : 0;
+    outline.current.visible = near;
+  });
+  return <group position={[slot.x, 0, slot.z]} rotation={[0, slot.yaw, 0]}>
+    {/* Base / chassis */}
+    <Box at={[0, .12, .05]} size={[.95, .18, 1.55]} color="#1a1816" />
+    <Box at={[0, .28, .15]} size={[.88, .14, 1.1]} color="#24201d" />
+    {/* Seat cushion */}
+    <mesh position={[0, .48, .22]} castShadow receiveShadow>
+      <boxGeometry args={[.82, .22, .72]} />
+      <meshStandardMaterial ref={leather} color="#2a2624" emissive="#8a6a48" roughness={.72} metalness={.08} />
+    </mesh>
+    {/* Reclined backrest */}
+    <group position={[0, .72, .72]} rotation={[-.48, 0, 0]}>
+      <Box at={[0, .55, 0]} size={[.84, 1.15, .22]} color="#2a2624" />
+      <Box at={[0, .55, -.06]} size={[.72, 1.02, .1]} color="#3a342f" />
+      <Box at={[0, 1.05, .02]} size={[.7, .28, .18]} color="#24201d" />
+    </group>
+    {/* Armrests */}
+    {[-1, 1].map(side => <group key={side}>
+      <Box at={[side * .48, .55, .18]} size={[.14, .12, .85]} color="#1f1c1a" />
+      <Box at={[side * .48, .68, .05]} size={[.16, .08, .55]} color="#2a2624" />
+      <Box at={[side * .48, .42, .55]} size={[.12, .42, .12]} color="#1a1816" />
+    </group>)}
+    {/* Calf / footrest */}
+    <group position={[0, .38, -.55]} rotation={[.35, 0, 0]}>
+      <Box at={[0, 0, 0]} size={[.78, .18, .55]} color="#2a2624" />
+      <Box at={[0, -.08, -.22]} size={[.7, .12, .28]} color="#24201d" />
+    </group>
+    {/* Side control panel + brand cue */}
+    <Box at={[.52, .62, .35]} size={[.08, .22, .28]} color="#141210" />
+    <Box at={[.54, .62, .35]} size={[.02, .14, .18]} color="#c4a574" shadow={false} />
+    <Box at={[0, .08, .85]} size={[.55, .04, .12]} color="#c4a574" shadow={false} />
+    <group ref={outline} visible={false}>
+      <Box at={[0, .95, .1]} size={[1.15, .02, 2.15]} color="#e2d7b3" shadow={false} />
+    </group>
+  </group>;
+}
 function flameTexture(seed = 0) {
   const canvas = document.createElement('canvas'); canvas.width = 128; canvas.height = 256;
   const ctx = canvas.getContext('2d')!;
@@ -1149,6 +1198,7 @@ function Furnishings({ reducedMotion, highQuality, lanternLit = 0 }: { reducedMo
   const nightish = lanternLit > .45;
   return <group>
     {SLOTS.filter(s => s.kind === 'mat').map((slot, i) => <YogaMat key={slot.id} slot={slot} index={i} />)}
+    {SLOTS.filter(s => s.kind === 'massage').map(slot => <BodyfriendMassageChair key={slot.id} slot={slot} />)}
     <Box at={[-32, .12, -7.5]} size={[2.2, .08, 2]} color="#c4b69b" />
     <SpaBaths reducedMotion={reducedMotion} />
     <Box at={[32, -.005, 8.5]} size={[27.5, .12, 6.5]} material={materials.wood} />
