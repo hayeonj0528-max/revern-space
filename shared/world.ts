@@ -187,7 +187,7 @@ for (const side of [-1, 1]) { COLLIDERS.push({ x: side * 5.5, z: 26, w: .5, d: .
   COLLIDERS.push({ x: x - 4, z: z - d / 2, w: w - 8, d: .35, height: .55 });
   COLLIDERS.push({ x: -24, z: 20, w: 1.7, d: 1.7, height: .9 });
 }
-// Onsen clearing: west gap centered on the bamboo path + wide south opening to bath stairs.
+// Onsen clearing: open bath with low rim; tall screens sit on the left/right edges.
 {
   const { center: [x, z], size: [w, d] } = ZONES.onsen;
   const southOpen = 9;
@@ -195,19 +195,23 @@ for (const side of [-1, 1]) { COLLIDERS.push({ x: side * 5.5, z: 26, w: .5, d: .
   // Keep the east–west path (z≈16) and the north apron to the stairs fully clear.
   const gapLo = pathZ - 2.6, gapHi = pathZ + 4.2;
   const westX = x - w / 2, zoneLo = z - d / 2, zoneHi = z + d / 2;
+  // Soft outer zone edges (not across the bath itself).
   COLLIDERS.push({ x: x + w / 2, z, w: .35, d, height: .55 });
   COLLIDERS.push({ x, z: zoneHi, w, d: .35, height: .55 });
   if (gapLo > zoneLo + .4) COLLIDERS.push({ x: westX, z: (zoneLo + gapLo) / 2, w: .35, d: gapLo - zoneLo, height: .55 });
   if (zoneHi > gapHi + .4) COLLIDERS.push({ x: westX, z: (gapHi + zoneHi) / 2, w: .35, d: zoneHi - gapHi, height: .55 });
   COLLIDERS.push({ x: x - (w + southOpen) / 4, z: zoneLo, w: (w - southOpen) / 2, d: .35, height: .55 });
   COLLIDERS.push({ x: x + (w + southOpen) / 4, z: zoneLo, w: (w - southOpen) / 2, d: .35, height: .55 });
-  COLLIDERS.push({ x: ONSEN.x - ONSEN.w / 2, z: ONSEN.z, w: .3, d: ONSEN.d, height: .35 });
-  COLLIDERS.push({ x: ONSEN.x + ONSEN.w / 2, z: ONSEN.z, w: .3, d: ONSEN.d, height: .35 });
-  COLLIDERS.push({ x: ONSEN.x, z: ONSEN.z + ONSEN.d / 2, w: ONSEN.w, d: .3, height: .35 });
-  // South bath rim — leave a wide stair mouth so the path apron feeds straight in.
+  // Low bath lip only — no tall wall blocking the water.
+  COLLIDERS.push({ x: ONSEN.x - ONSEN.w / 2, z: ONSEN.z, w: .3, d: ONSEN.d, height: .22 });
+  COLLIDERS.push({ x: ONSEN.x + ONSEN.w / 2, z: ONSEN.z, w: .3, d: ONSEN.d, height: .22 });
+  COLLIDERS.push({ x: ONSEN.x, z: ONSEN.z + ONSEN.d / 2, w: ONSEN.w, d: .3, height: .22 });
   const stairW = 4.2;
   const side = (ONSEN.w - stairW) / 2;
-  for (const sign of [-1, 1]) COLLIDERS.push({ x: ONSEN.x + sign * (stairW / 2 + side / 2), z: ONSEN.z - ONSEN.d / 2, w: side, d: .3, height: .35 });
+  for (const sign of [-1, 1]) COLLIDERS.push({ x: ONSEN.x + sign * (stairW / 2 + side / 2), z: ONSEN.z - ONSEN.d / 2, w: side, d: .3, height: .22 });
+  // Relocated side screens + north screen outside the water.
+  for (const sign of [-1, 1]) COLLIDERS.push({ x: ONSEN.x + sign * 7.15, z: ONSEN.z + .6, w: .5, d: 8.8, height: 2.1 });
+  COLLIDERS.push({ x: ONSEN.x, z: ONSEN.z + 6.9, w: 9.6, d: .5, height: 2.1 });
 }
 
 // Courtyard snack stall — south of onsen approach (yaw 0 → counter along X)

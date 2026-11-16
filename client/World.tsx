@@ -741,13 +741,18 @@ function BambooGrove() {
     const pdx = tx - fx, pdz = tz - fz, plen = Math.hypot(pdx, pdz) || 1;
     const ux = pdx / plen, uz = pdz / plen, px = -uz, pz = ux;
     const onWalk = (x: number, z: number) => onOnsenWalk(x, z) || Math.hypot(x - SHOP.x, z - SHOP.z) < 3.2;
-    // Wood deck (15×14) + bath — never plant culms in the water or on the clearing floor.
-    const inOnsenClearing = (x: number, z: number) => Math.abs(x - ONSEN.x) < 7.8 && Math.abs(z - ONSEN.z) < 7.2;
+    // Keep water + inner deck clear; plant tightly around so the bath feels wrapped in bamboo.
+    const inBath = (x: number, z: number) => Math.abs(x - ONSEN.x) < ONSEN.w / 2 + 1.1 && Math.abs(z - ONSEN.z) < ONSEN.d / 2 + 1.1;
+    const inSouthMouth = (x: number, z: number) => Math.abs(x - ONSEN.x) < 3.2 && z < ONSEN.z - 1.5 && z > ONSEN.z - 7.2;
+    const nearHammock = (x: number, z: number) => ONSEN_HAMMOCKS.some(h => {
+      const mx = (h.a[0] + h.b[0]) / 2, mz = (h.a[1] + h.b[1]) / 2;
+      return Math.hypot(x - mx, z - mz) < 2.6;
+    });
     const push = (x: number, z: number, cluster = 1, hedge = false) => {
       for (let k = 0; k < cluster; k++) {
         const qx = x + (rand() - .5) * .18, qz = z + (rand() - .5) * .18;
-        if (inOnsenClearing(qx, qz)) continue;
-        if (hedge ? onWalk(qx, qz) : onBambooPath(qx, qz) || onWalk(qx, qz)) continue;
+        if (inBath(qx, qz) || inSouthMouth(qx, qz) || nearHammock(qx, qz)) continue;
+        if (hedge ? onWalk(qx, qz) : onOnsenWalk(qx, qz)) continue;
         data.push({ x: qx, z: qz, h: 5.2 + rand() * 3.8, lean: (rand() - .5) * .035, phase: rand() * 8, thick: .048 + rand() * .032 });
       }
     };
@@ -759,14 +764,20 @@ function BambooGrove() {
         push(cx - px * d + (rand() - .5) * .05, cz - pz * d, 1, true);
       }
     }
-    // Ring sits outside the deck so culms frame the clearing, not the water.
-    for (let a = 0; a < Math.PI * 2; a += .16) {
-      for (const r of [9.0, 10.6]) {
+    // Dense wrap around the bath — south mouth stays open for the path.
+    for (let a = 0; a < Math.PI * 2; a += .11) {
+      for (const r of [5.6, 6.7, 7.9, 9.2, 10.5]) {
         const bx = ONSEN.x + Math.cos(a) * r, bz = ONSEN.z + Math.sin(a) * r;
-        if (bz < ONSEN.z - 2.4) continue; // keep south entrance open
-        if (onOnsenWalk(bx, bz) || inOnsenClearing(bx, bz)) continue;
+        if (bz < ONSEN.z - 3.2 && Math.abs(bx - ONSEN.x) < 3.6) continue;
+        if (onOnsenWalk(bx, bz) || inBath(bx, bz) || inSouthMouth(bx, bz)) continue;
         push(bx, bz, 1);
       }
+    }
+    // Extra side clumps so the relocated side walls sit in bamboo.
+    for (const side of [-1, 1]) for (let i = 0; i < 14; i++) {
+      const z = ONSEN.z - 4.5 + i * .75;
+      push(ONSEN.x + side * (6.4 + (i % 3) * .45), z, 2);
+      push(ONSEN.x + side * (7.6 + (i % 2) * .4), z + .2, 1);
     }
     return data;
   }, []);
@@ -960,10 +971,19 @@ function OnsenYard({ reducedMotion, lanternLit }: { reducedMotion: boolean; lant
     <BambooGrove />
     {ONSEN_HAMMOCKS.map(h => <Hammock key={h.id} id={h.id} a={h.a} b={h.b} height={1.2} sag={.56} />)}
     <Water x={ONSEN.x} z={ONSEN.z} w={ONSEN.w} d={ONSEN.d} basin reducedMotion={reducedMotion} />
-    {[-1, 1].map(side => <Box key={side} at={[ONSEN.x + side * ONSEN.w / 2, -.3, ONSEN.z]} size={[.3, 1, ONSEN.d + .3]} material={materials.stone} />)}
-    <Box at={[ONSEN.x, -.3, ONSEN.z + ONSEN.d / 2]} size={[ONSEN.w, 1, .3]} material={materials.stone} />
-    {[-1, 1].map(side => <Box key={side} at={[ONSEN.x + side * (2.1 + (ONSEN.w - 4.2) / 4), -.3, ONSEN.z - ONSEN.d / 2]} size={[(ONSEN.w - 4.2) / 2, 1, .3]} material={materials.stone} />)}
+    {/* Low bath lip only — no tall wall across the water. */}
+    {[-1, 1].map(side => <Box key={`lip-x-${side}`} at={[ONSEN.x + side * ONSEN.w / 2, -.48, ONSEN.z]} size={[.36, .28, ONSEN.d + .15]} material={materials.stone} />)}
+    <Box at={[ONSEN.x, -.48, ONSEN.z + ONSEN.d / 2]} size={[ONSEN.w + .15, .28, .36]} material={materials.stone} />
+    {[-1, 1].map(side => <Box key={`lip-s-${side}`} at={[ONSEN.x + side * (2.1 + (ONSEN.w - 4.2) / 4), -.48, ONSEN.z - ONSEN.d / 2]} size={[(ONSEN.w - 4.2) / 2, .28, .36]} material={materials.stone} />)}
     {[0, 1, 2, 3].map(i => <Box key={i} at={[ONSEN.x, -.15 - i * .18, ONSEN.z - ONSEN.d / 2 + .3 + i * .35]} size={[3.4, .18, .4]} material={materials.stone} />)}
+    {/* Tall screens moved off the bath — sit on the left/right edges, wrapped by bamboo. */}
+    {[-1, 1].map(side => <group key={`side-screen-${side}`}>
+      <Box at={[ONSEN.x + side * 7.15, .85, ONSEN.z + .6]} size={[.42, 2.1, 8.8]} material={materials.stone} />
+      <Box at={[ONSEN.x + side * 7.15, 1.95, ONSEN.z + .6]} size={[.55, .14, 9]} material={materials.wood} />
+      <Box at={[ONSEN.x + side * 7.15, .2, ONSEN.z + .6]} size={[.7, .28, 9.1]} material={materials.stone} />
+    </group>)}
+    <Box at={[ONSEN.x, .85, ONSEN.z + 6.9]} size={[9.6, 2.1, .42]} material={materials.stone} />
+    <Box at={[ONSEN.x, 1.95, ONSEN.z + 6.9]} size={[9.9, .14, .55]} material={materials.wood} />
     {[-2, 0, 2].map(dx => <Steam key={dx} x={ONSEN.x + dx} z={ONSEN.z} reducedMotion={reducedMotion} />)}
     <Sign title="노천탕" subtitle="바깥 탕" at={[ONSEN.x + 2.6, 2.5, ONSEN.entry[1] - .4]} yaw={faceYaw(fx, fz, ONSEN.x + 2.6, ONSEN.entry[1] - .4)} near={16} hideClose={5} />
     <Sign title="노천탕으로 가는 길" subtitle="마당에서 이어지는 산책" at={signOnPath} yaw={-Math.PI / 2} near={26} hideClose={4.5} />
