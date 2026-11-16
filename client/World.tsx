@@ -277,7 +277,7 @@ function Pavilion({ id, lit = 0, reducedMotion = false }: { id: Exclude<ZoneId, 
     </>}
   </group>;
 }
-function CourtyardBridge({ lanternLit = 0, reducedMotion = false }: { lanternLit?: number; reducedMotion?: boolean }) {
+function CourtyardBridge({ lanternLit = 0, reducedMotion = false, highQuality = false }: { lanternLit?: number; reducedMotion?: boolean; highQuality?: boolean }) {
   // Soft arch over the central basin — timber deck, stone abutments, quiet railings.
   const rails = useMemo(() => [-1, 1].map(side => new THREE.TubeGeometry(new THREE.CatmullRomCurve3([-3.7, -2.2, 0, 2.2, 3.7].map(z => {
     const t = (z + 3.9) / 7.8;
@@ -308,9 +308,13 @@ function CourtyardBridge({ lanternLit = 0, reducedMotion = false }: { lanternLit
       })}
       <mesh geometry={rails[si]} material={materials.wood} />
     </group>)}
-    {[-1, 1].flatMap(side => [-3.35, 3.35].map((z, i) =>
-      <HorongPole key={`${side}-${z}`} at={[side * 2.05, 0, z]} lit={lanternLit} phase={side + i} reducedMotion={reducedMotion} />
+    {/* Corner + mid-span 호롱 — street lights so the crossing stays readable after dusk. */}
+    {[-1, 1].flatMap(side => [-3.35, 0, 3.35].map((z, i) =>
+      <HorongPole key={`${side}-${z}`} at={[side * 2.05, 0, z]} lit={lanternLit} phase={side + i * 1.1} reducedMotion={reducedMotion} highQuality={highQuality} street />
     ))}
+    <pointLight position={[0, 3.1, 0]} color="#ffd6a0" intensity={9 * lanternLit} distance={14} decay={1.5} />
+    <pointLight position={[0, 2.6, -3.2]} color="#f8c284" intensity={5.5 * lanternLit} distance={10} decay={1.5} />
+    <pointLight position={[0, 2.6, 3.2]} color="#f8c284" intensity={5.5 * lanternLit} distance={10} decay={1.5} />
   </group>;
 }
 /** 한옥 대문 — sits in the courtyard approach; roof stays short so it never hangs over the tea doors. */
@@ -1219,7 +1223,7 @@ export const World = memo(function World({ reducedMotion, highQuality, day }: { 
     <Box at={[-10, -.14, 12]} size={[5, .2, 8]} material={materials.stone} />
     {Array.from({ length: 9 }, (_, i) => <Box key={i} at={[-14 + i * 3.5, -.045, 6]} size={[.025, .01, 28]} color="#a5aa95" shadow={false} />)}
     <Water x={0} z={-6} w={13} d={8} reducedMotion={reducedMotion} />
-    <CourtyardBridge lanternLit={lanternLit} reducedMotion={reducedMotion} />
+    <CourtyardBridge lanternLit={lanternLit} reducedMotion={reducedMotion} highQuality={highQuality} />
     <Forest reducedMotion={reducedMotion} highQuality={highQuality} />
     <Birds reducedMotion={reducedMotion} highQuality={highQuality} />
     {(['yoga', 'spa', 'floating', 'tea'] as const).map(id => <Pavilion key={id} id={id} lit={lanternLit} reducedMotion={reducedMotion} />)}
