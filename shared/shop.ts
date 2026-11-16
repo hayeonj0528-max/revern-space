@@ -26,7 +26,7 @@ export const SHOP_ITEMS: readonly {
   { id: 'egg', name: '맥반석 계란', price: 1000, blurb: '따뜻하게 구운 계란 두 알' },
   { id: 'sikhye', name: '식혜', price: 3000, blurb: '달큰한 식혜 한 병' },
   { id: 'hotbar', name: '핫바', price: 2000, blurb: '따끈한 핫바 한 꼬치' },
-  { id: 'tteokbokki', name: '떡볶이', price: 3500, blurb: '매콤달콤 떡볶이 한 접시' }
+  { id: 'tteokbokki', name: '떡볶이', price: 5000, blurb: '매콤달콤 떡볶이 한 접시' }
 ];
 
 export type PayMode = 'metaverse' | 'kakao';
