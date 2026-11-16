@@ -771,9 +771,6 @@ function BambooGrove() {
     const data: { x: number; z: number; h: number; lean: number; phase: number; thick: number }[] = [];
     let seed = 41;
     const rand = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
-    const [fx, fz] = ONSEN_PATH.from, [tx, tz] = ONSEN_PATH.to;
-    const pdx = tx - fx, pdz = tz - fz, plen = Math.hypot(pdx, pdz) || 1;
-    const ux = pdx / plen, uz = pdz / plen, px = -uz, pz = ux;
     const onWalk = (x: number, z: number) => onOnsenWalk(x, z) || Math.hypot(x - SHOP.x, z - SHOP.z) < 3.2;
     // Keep water + inner deck clear; plant tightly around so the bath feels wrapped in bamboo.
     const inBath = (x: number, z: number) => Math.abs(x - ONSEN.x) < ONSEN.w / 2 + 1.1 && Math.abs(z - ONSEN.z) < ONSEN.d / 2 + 1.1;
@@ -790,26 +787,24 @@ function BambooGrove() {
         data.push({ x: qx, z: qz, h: 5.2 + rand() * 3.8, lean: (rand() - .5) * .035, phase: rand() * 8, thick: .048 + rand() * .032 });
       }
     };
-    // Bamboo hedges hug the narrower center path — stop before the onsen apron.
-    for (let t = .05; t <= .82; t += .045) {
-      const cx = fx + pdx * t, cz = fz + pdz * t;
-      for (const d of [1.9, 2.7, 3.6]) {
-        push(cx + px * d + (rand() - .5) * .05, cz + pz * d, 1, true);
-        push(cx - px * d + (rand() - .5) * .05, cz - pz * d, 1, true);
-      }
-    }
-    // Dense wrap around the bath — south mouth stays open for the path.
+    // No bamboo along the approach path — keep the walk open; wrap only the bath itself.
+    const nearApproach = (x: number, z: number) => {
+      const [ax, az] = ONSEN_PATH.from, [bx, bz] = ONSEN_PATH.to;
+      const dx = bx - ax, dz = bz - az, len2 = dx * dx + dz * dz || 1;
+      const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / len2));
+      return Math.hypot(x - (ax + t * dx), z - (az + t * dz)) < 4.2;
+    };
     for (let a = 0; a < Math.PI * 2; a += .11) {
       for (const r of [5.6, 6.7, 7.9, 9.2, 10.5]) {
         const bx = ONSEN.x + Math.cos(a) * r, bz = ONSEN.z + Math.sin(a) * r;
         if (bz < ONSEN.z - 3.2 && Math.abs(bx - ONSEN.x) < 3.6) continue;
-        if (onOnsenWalk(bx, bz) || inBath(bx, bz) || inSouthMouth(bx, bz)) continue;
+        if (onOnsenWalk(bx, bz) || inBath(bx, bz) || inSouthMouth(bx, bz) || nearApproach(bx, bz)) continue;
         push(bx, bz, 1);
       }
     }
-    // Extra side clumps so the relocated side walls sit in bamboo.
     for (const side of [-1, 1]) for (let i = 0; i < 14; i++) {
-      const z = ONSEN.z - 4.5 + i * .75;
+      const z = ONSEN.z - 3.2 + i * .7;
+      if (nearApproach(ONSEN.x + side * 6.8, z)) continue;
       push(ONSEN.x + side * (6.4 + (i % 3) * .45), z, 2);
       push(ONSEN.x + side * (7.6 + (i % 2) * .4), z + .2, 1);
     }
@@ -957,37 +952,34 @@ function Hammock({ id, a, b, height = 1.15, sag = .55 }: { id: string; a: [numbe
     </group>
   </group>;
 }
-/** Raised stone walk with curbs — reads as a real path between bamboo. */
+/** Raised stone walk — E→N turn with continuous curbs (no curb blocking the corner). */
 function BambooPathWalk() {
-  const [fx, fz] = ONSEN_PATH.from, [tx, tz] = ONSEN_PATH.to;
-  const mid: [number, number, number] = [(fx + tx) / 2, 0, (fz + tz) / 2];
-  const pathLen = onsenPathLength(), pathYaw = onsenPathYaw();
+  const [fx, fz] = ONSEN_PATH.from, [tx] = ONSEN_PATH.to;
+  const pathLen = onsenPathLength();
   const w = ONSEN_PATH.halfW * 2;
+  const curb = w / 2 + .12;
+  const midX = (fx + tx) / 2;
+  const apronZ1 = 18.9;
   const steps = Math.max(6, Math.round(pathLen / 1.35));
   return <group>
-    {/* Courtyard mouth apron */}
+    {/* Courtyard mouth */}
     <Box at={[fx - 1.2, -.12, fz]} size={[3.2, .16, w + 1.2]} color="#c9c2b0" />
-    <group position={mid} rotation={[0, pathYaw, 0]}>
-      {/* Packed gravel bed */}
-      <Box at={[0, -.1, 0]} size={[w + .55, .14, pathLen + 1.2]} color="#b7b09c" />
-      {/* Walk surface — lighter so it reads against grass/courtyard */}
-      <Box at={[0, -.02, 0]} size={[w, .12, pathLen + .6]} color="#d8d1bc" />
-      {/* Side curbs */}
-      {[-1, 1].map(side =>
-        <Box key={side} at={[side * (w / 2 + .12), .06, 0]} size={[.28, .22, pathLen + .8]} material={materials.stone} />
-      )}
-      {/* Stepping slabs down the center */}
-      {Array.from({ length: steps }, (_, i) => {
-        const z = -pathLen / 2 + (i + .5) * (pathLen / steps);
-        return <Box key={i} at={[0, .02, z]} size={[w * .72, .08, 1.05]} color="#cfc7b4" />;
-      })}
-    </group>
-    {/* Turn north onto the bath apron */}
-    <Box at={[tx, -.1, 17.2]} size={[w + .4, .14, 3.6]} color="#b7b09c" />
-    <Box at={[tx, -.02, 17.2]} size={[w - .15, .12, 3.2]} color="#d8d1bc" />
-    {[-1, 1].map(side =>
-      <Box key={side} at={[tx + side * (w / 2 + .12), .06, 17.1]} size={[.28, .22, 3.4]} material={materials.stone} />
-    )}
+    {/* East–west bed + surface */}
+    <Box at={[midX, -.1, fz]} size={[pathLen + 1.2, .14, w + .55]} color="#b7b09c" />
+    <Box at={[midX, -.02, fz]} size={[pathLen + .6, .12, w]} color="#d8d1bc" />
+    {Array.from({ length: steps }, (_, i) => {
+      const x = fx + (i + .5) * (pathLen / steps);
+      return <Box key={i} at={[x, .02, fz]} size={[1.05, .08, w * .72]} color="#cfc7b4" />;
+    })}
+    {/* South curb (right when walking east) — continuous into the north turn */}
+    <Box at={[midX + .15, .06, fz + curb]} size={[pathLen + .9, .22, .28]} material={materials.stone} />
+    <Box at={[tx + curb, .06, (fz + apronZ1) / 2 + .15]} size={[.28, .22, apronZ1 - fz + .5]} material={materials.stone} />
+    {/* North curb — stops short of the corner so the turn stays open, then continues north */}
+    <Box at={[midX - .55, .06, fz - curb]} size={[pathLen - .7, .22, .28]} material={materials.stone} />
+    <Box at={[tx - curb, .06, (fz + apronZ1) / 2 + .55]} size={[.28, .22, apronZ1 - fz - .3]} material={materials.stone} />
+    {/* North apron into the bath */}
+    <Box at={[tx, -.1, (fz + apronZ1) / 2]} size={[w + .45, .14, apronZ1 - fz + .8]} color="#b7b09c" />
+    <Box at={[tx, -.02, (fz + apronZ1) / 2]} size={[w - .1, .12, apronZ1 - fz + .4]} color="#d8d1bc" />
   </group>;
 }
 function OnsenYard({ reducedMotion, lanternLit }: { reducedMotion: boolean; lanternLit: number }) {
