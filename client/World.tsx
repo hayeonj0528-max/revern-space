@@ -16,23 +16,30 @@ function Box({ at, size, material = materials.wood, color, shadow = true }: { at
   return <mesh position={at} castShadow={shadow} receiveShadow material={color ? undefined : material}><boxGeometry args={size} />{color && <meshStandardMaterial color={color} roughness={.85} />}</mesh>;
 }
 function roofGeometry(w: number, d: number, lift = 0, opts?: { shallow?: boolean; /** No eave past this local-Z face (−1 = −Z / open north). */ flushFace?: -1 | 1 }) {
-  // Korean 팔작지붕 with stronger 처마 tip lift so the silhouette reads as giwa, not a quiet hip roof.
+  // Korean 팔작지붕. Flush open faces stay high — no descending giwa curtain over the doorway.
   const vertices: number[] = [], uvs: number[] = [], indices: number[] = []; const nx = 36, nz = 36;
   const shallow = !!opts?.shallow;
   const flush = opts?.flushFace;
   const sidePad = shallow ? .2 : 5.1;
-  const ew = w + sidePad, ed = d + (flush != null ? sidePad : sidePad);
+  const ew = w + sidePad, ed = d + sidePad;
   const hipDrop = shallow ? 2.55 : 4.05, cornerLift = shallow || flush != null ? 0 : 2.85;
+  const ridge = 7.85 + lift;
   for (let j = 0; j <= nz; j++) for (let i = 0; i <= nx; i++) {
     let x = (i / nx - .5) * ew, z = (j / nz - .5) * ed;
     // Pull the open-front edge back flush with the wall line — no overhang.
     if (flush === -1) z = Math.max(z, -d / 2);
     if (flush === 1) z = Math.min(z, d / 2);
-    const ax = Math.abs(x) / (ew / 2), az = Math.abs(z) / Math.max(ed / 2, .001);
-    const hip = Math.max(az, Math.max(0, (ax - .4) / .6));
-    const corner = flush != null ? 0 : Math.pow(Math.min(1, ax) * Math.min(1, az), 1.55);
-    const sag = .18 * Math.sin(ax * Math.PI) * Math.sin(az * Math.PI);
-    const y = 7.85 + lift - hipDrop * hip + cornerLift * Math.pow(corner, 1.02) + .12 * Math.pow(hip, 5) - sag;
+    const ax = Math.abs(x) / (ew / 2);
+    // Drop tiles only toward closed faces / sides — never down the open doorway face.
+    let azHip = Math.abs(z) / Math.max(ed / 2, .001);
+    if (flush === -1) azHip = Math.max(0, z) / Math.max(d / 2, .001);
+    if (flush === 1) azHip = Math.max(0, -z) / Math.max(d / 2, .001);
+    let hip = Math.max(azHip, Math.max(0, (ax - .4) / .6));
+    if (flush === -1 && z <= -d / 2 + .05) hip = Math.max(0, (ax - .62) / .38);
+    if (flush === 1 && z >= d / 2 - .05) hip = Math.max(0, (ax - .62) / .38);
+    const corner = flush != null ? 0 : Math.pow(Math.min(1, ax) * Math.min(1, azHip), 1.55);
+    const sag = flush != null ? 0 : .18 * Math.sin(ax * Math.PI) * Math.sin(azHip * Math.PI);
+    const y = ridge - hipDrop * hip + cornerLift * Math.pow(corner, 1.02) + .12 * Math.pow(hip, 5) - sag;
     vertices.push(x, y, z); uvs.push(i / nx * w / 3.2, j / nz * d / 4);
     if (i < nx && j < nz) { const a = j * (nx + 1) + i; indices.push(a, a + nx + 1, a + 1, a + 1, a + nx + 1, a + nx + 2); }
   }
