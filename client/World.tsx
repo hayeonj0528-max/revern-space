@@ -563,6 +563,12 @@ function SaunaCabin({ reducedMotion }: { reducedMotion: boolean }) {
     <Sign title="나무의 온기, 잔잔한 쉼" subtitle="BENCHES & WARM STONES" at={[55, 2.9, 11.55]} yaw={Math.PI} near={14} />
     {[1, 5].map(z => <Box key={z} at={[45.78, 1.8, z]} size={[.2, 3.6, .2]} material={materials.wood} />)}
     <Box at={[45.78, 3.6, 3]} size={[.2, .2, 4.4]} material={materials.wood} />
+    {/* Soft exit wash — doorway readable when leaving toward the spa. */}
+    <CoveStrip at={[46.05, 3.42, 3]} size={[.12, .04, 3.6]} lit={.5} />
+    <WallWash at={[46.15, 1.55, 1.15]} yaw={-Math.PI / 2} width={1.1} lit={.4} />
+    <WallWash at={[46.15, 1.55, 4.85]} yaw={-Math.PI / 2} width={1.1} lit={.4} />
+    <pointLight position={[47.2, 2.4, 3]} color="#f5d6a8" intensity={3.6} distance={7} decay={1.7} />
+    <pointLight position={[46.4, 2.9, 3]} color="#ffc17b" intensity={2.8} distance={5.5} decay={1.75} />
   </group>;
 }
 const Forest = memo(function Forest({ reducedMotion, highQuality }: { reducedMotion: boolean; highQuality: boolean }) {
