@@ -664,48 +664,53 @@ function YogaMat({ slot, index }: { slot: Slot; index: number }) {
 function BodyfriendMassageChair({ slot }: { slot: Slot }) {
   const outline = useRef<THREE.Group>(null!);
   const leather = useRef<THREE.MeshStandardMaterial>(null!);
-  const colors = useMemo(() => ({ idle: new THREE.Color('#2a2624'), near: new THREE.Color('#3a342f'), occupied: new THREE.Color('#1f1c1a') }), []);
+  const colors = useMemo(() => ({ idle: new THREE.Color('#4a4038'), near: new THREE.Color('#6a5c50'), occupied: new THREE.Color('#3a342e') }), []);
   useFrame((_, dt) => {
     const state = network.getState(), self = state.snapshot?.players.find(p => p.id === state.id);
     const nearest = self?.zone === 'yoga' && !self.slot ? nearbyMassage(motion.position.x, motion.position.z, state.snapshot?.occupancy ?? {}) : undefined;
     const near = nearest?.id === slot.id;
     const occupied = !!state.snapshot?.occupancy[slot.id];
     leather.current.color.lerp(near ? colors.near : occupied ? colors.occupied : colors.idle, 1 - Math.exp(-dt * 12));
-    leather.current.emissiveIntensity = near ? .06 : 0;
+    leather.current.emissiveIntensity = near ? .14 : .04;
     outline.current.visible = near;
   });
   return <group position={[slot.x, 0, slot.z]} rotation={[0, slot.yaw, 0]}>
+    {/* Raised wood plinth so the chair reads clearly on the daecheong floor */}
+    <Box at={[0, .06, .05]} size={[1.35, .12, 2.35]} material={materials.darkWood} />
+    <Box at={[0, .14, .05]} size={[1.2, .06, 2.15]} color="#c4b59a" />
     {/* Base / chassis */}
-    <Box at={[0, .12, .05]} size={[.95, .18, 1.55]} color="#1a1816" />
-    <Box at={[0, .28, .15]} size={[.88, .14, 1.1]} color="#24201d" />
+    <Box at={[0, .28, .08]} size={[1.05, .22, 1.75]} color="#2c2824" />
+    <Box at={[0, .42, .18]} size={[.98, .14, 1.2]} color="#3a342e" />
     {/* Seat cushion */}
-    <mesh position={[0, .48, .22]} castShadow receiveShadow>
-      <boxGeometry args={[.82, .22, .72]} />
-      <meshStandardMaterial ref={leather} color="#2a2624" emissive="#8a6a48" roughness={.72} metalness={.08} />
+    <mesh position={[0, .62, .25]} castShadow receiveShadow>
+      <boxGeometry args={[.92, .26, .82]} />
+      <meshStandardMaterial ref={leather} color="#4a4038" emissive="#8a6a48" emissiveIntensity={.04} roughness={.68} metalness={.06} />
     </mesh>
     {/* Reclined backrest */}
-    <group position={[0, .72, .72]} rotation={[-.48, 0, 0]}>
-      <Box at={[0, .55, 0]} size={[.84, 1.15, .22]} color="#2a2624" />
-      <Box at={[0, .55, -.06]} size={[.72, 1.02, .1]} color="#3a342f" />
-      <Box at={[0, 1.05, .02]} size={[.7, .28, .18]} color="#24201d" />
+    <group position={[0, .88, .82]} rotation={[-.52, 0, 0]}>
+      <Box at={[0, .62, 0]} size={[.94, 1.28, .26]} color="#4a4038" />
+      <Box at={[0, .62, -.07]} size={[.8, 1.12, .12]} color="#5c5046" />
+      <Box at={[0, 1.18, .02]} size={[.78, .32, .2]} color="#3a342e" />
     </group>
     {/* Armrests */}
     {[-1, 1].map(side => <group key={side}>
-      <Box at={[side * .48, .55, .18]} size={[.14, .12, .85]} color="#1f1c1a" />
-      <Box at={[side * .48, .68, .05]} size={[.16, .08, .55]} color="#2a2624" />
-      <Box at={[side * .48, .42, .55]} size={[.12, .42, .12]} color="#1a1816" />
+      <Box at={[side * .54, .68, .2]} size={[.16, .14, .95]} color="#2c2824" />
+      <Box at={[side * .54, .84, .05]} size={[.18, .1, .62]} color="#4a4038" />
+      <Box at={[side * .54, .52, .62]} size={[.14, .48, .14]} color="#c4a574" />
     </group>)}
     {/* Calf / footrest */}
-    <group position={[0, .38, -.55]} rotation={[.35, 0, 0]}>
-      <Box at={[0, 0, 0]} size={[.78, .18, .55]} color="#2a2624" />
-      <Box at={[0, -.08, -.22]} size={[.7, .12, .28]} color="#24201d" />
+    <group position={[0, .48, -.62]} rotation={[.38, 0, 0]}>
+      <Box at={[0, 0, 0]} size={[.88, .2, .62]} color="#4a4038" />
+      <Box at={[0, -.1, -.26]} size={[.8, .14, .32]} color="#3a342e" />
     </group>
-    {/* Side control panel + brand cue */}
-    <Box at={[.52, .62, .35]} size={[.08, .22, .28]} color="#141210" />
-    <Box at={[.54, .62, .35]} size={[.02, .14, .18]} color="#c4a574" shadow={false} />
-    <Box at={[0, .08, .85]} size={[.55, .04, .12]} color="#c4a574" shadow={false} />
+    {/* Side control panel + brand plaque */}
+    <Box at={[.58, .78, .4]} size={[.1, .28, .34]} color="#1a1816" />
+    <Box at={[.61, .78, .4]} size={[.03, .18, .22]} color="#e2c48a" shadow={false} />
+    <Box at={[0, .2, 1.05]} size={[.7, .05, .14]} color="#e2c48a" shadow={false} />
+    <Sign title="바디프렌드" subtitle="BODYFRIEND" at={[0, 1.85, .15]} yaw={Math.PI} near={14} />
+    <pointLight position={[0, 1.55, .2]} color="#f0d4a8" intensity={2.4} distance={4.5} decay={2} />
     <group ref={outline} visible={false}>
-      <Box at={[0, .95, .1]} size={[1.15, .02, 2.15]} color="#e2d7b3" shadow={false} />
+      <Box at={[0, 1.05, .05]} size={[1.4, .025, 2.45]} color="#e2d7b3" shadow={false} />
     </group>
   </group>;
 }
