@@ -416,6 +416,29 @@ function Lantern({ at, dark = false, lit = 0, phase = 0, reducedMotion = false, 
     {useLight && <pointLight ref={light} position={[0, 1.8, 0]} color="#ffc17b" intensity={dark ? 14 : 8 * lit} distance={11} decay={1.35} />}
   </group>;
 }
+/** Small paper 호롱 hung in the bamboo — always lights the clearing when lit. */
+function BambooHorong({ at, lit = 0, phase = 0, reducedMotion = false }: { at: [number, number, number]; lit?: number; phase?: number; reducedMotion?: boolean }) {
+  const shade = useRef<THREE.MeshStandardMaterial>(null!);
+  const light = useRef<THREE.PointLight>(null!);
+  const amount = Math.max(0, lit);
+  useFrame(({ clock }) => {
+    if (amount < .02) {
+      if (shade.current) shade.current.emissiveIntensity = .08;
+      if (light.current) light.current.intensity = 0;
+      return;
+    }
+    const flicker = reducedMotion ? 1 : .93 + Math.sin(clock.elapsedTime * 1.9 + phase) * .05;
+    if (shade.current) shade.current.emissiveIntensity = (.85 + amount) * flicker;
+    if (light.current) light.current.intensity = 9.5 * amount * flicker;
+  });
+  return <group position={at}>
+    <mesh position={[0, .55, 0]}><cylinderGeometry args={[.008, .008, 1.1, 5]} /><meshStandardMaterial color="#3a342c" roughness={.9} /></mesh>
+    <mesh position={[0, .05, 0]}><cylinderGeometry args={[.16, .18, .38, 12]} /><meshStandardMaterial ref={shade} color="#f3e2c0" emissive="#ffc878" emissiveIntensity={.08 + amount * 1.7} roughness={.85} toneMapped={false} /></mesh>
+    <mesh position={[0, .26, 0]}><cylinderGeometry args={[.17, .17, .04, 12]} /><meshStandardMaterial color="#6a5640" roughness={.7} /></mesh>
+    <mesh position={[0, -.16, 0]}><cylinderGeometry args={[.17, .17, .04, 12]} /><meshStandardMaterial color="#6a5640" roughness={.7} /></mesh>
+    {amount > .05 && <pointLight ref={light} position={[0, .05, 0]} color="#ffd6a0" intensity={9.5 * amount} distance={13} decay={1.45} />}
+  </group>;
+}
 /** Courtyard 호롱 — tall timber pole with a warm paper lantern. */
 function HorongPole({ at, lit = 0, phase = 0, reducedMotion = false, highQuality = false, street = false }: { at: [number, number, number]; lit?: number; phase?: number; reducedMotion?: boolean; highQuality?: boolean; /** Always cast light when lit — for dim paths like the spa approach. */ street?: boolean }) {
   const shade = useRef<THREE.MeshStandardMaterial>(null!);
@@ -1016,19 +1039,33 @@ function BambooPathWalk() {
     <Box at={[tx, -.02, (fz + apronZ1) / 2]} size={[w - .1, .12, apronZ1 - fz + .4]} color="#d8d1bc" />
   </group>;
 }
-function OnsenYard({ reducedMotion, lanternLit }: { reducedMotion: boolean; lanternLit: number }) {
+function OnsenYard({ reducedMotion, lanternLit, highQuality = false }: { reducedMotion: boolean; lanternLit: number; highQuality?: boolean }) {
   const [fx, fz] = ONSEN_PATH.from, [tx, tz] = ONSEN_PATH.to;
   const pathYaw = onsenPathYaw();
   const px = -Math.cos(pathYaw), pz = Math.sin(pathYaw);
   const along = (t: number, side: number, dist = 2.9): [number, number, number] =>
     [fx + (tx - fx) * t + px * side * dist, 0, fz + (tz - fz) * t + pz * side * dist];
   const signOnPath: [number, number, number] = [fx + (tx - fx) * .1, 2.85, fz + (tz - fz) * .1];
+  // Hang 호롱 in the bamboo ring — skip the open south mouth.
+  const bambooLights = useMemo(() => {
+    const spots: [number, number, number][] = [];
+    for (let i = 0; i < 10; i++) {
+      const a = (i / 10) * Math.PI * 2 + .15;
+      if (Math.sin(a) < -.55) continue; // south entrance
+      const r = 6.4 + (i % 3) * .55;
+      spots.push([ONSEN.x + Math.cos(a) * r, 2.15 + (i % 2) * .35, ONSEN.z + Math.sin(a) * r]);
+    }
+    return spots;
+  }, []);
   return <group>
     <BambooPathWalk />
     {/* Stone apron + smaller timber deck — less ryokan wood clearing */}
     <Box at={[ONSEN.x, -.14, ONSEN.z]} size={[15, .2, 14]} material={materials.stone} />
     <Box at={[ONSEN.x, -.06, ONSEN.z + .4]} size={[9.5, .12, 8.5]} material={materials.wood} />
     <BambooGrove />
+    {bambooLights.map((at, i) =>
+      <BambooHorong key={`onsen-horong-${i}`} at={at} lit={lanternLit} phase={i * 1.3} reducedMotion={reducedMotion} />
+    )}
     {ONSEN_HAMMOCKS.map(h => <Hammock key={h.id} id={h.id} a={h.a} b={h.b} height={1.2} sag={.56} />)}
     <Water x={ONSEN.x} z={ONSEN.z} w={ONSEN.w} d={ONSEN.d} basin reducedMotion={reducedMotion} />
     {/* Low bath lip only — no tall wall across the water. */}
@@ -1039,9 +1076,10 @@ function OnsenYard({ reducedMotion, lanternLit }: { reducedMotion: boolean; lant
     {[-2, 0, 2].map(dx => <Steam key={dx} x={ONSEN.x + dx} z={ONSEN.z} reducedMotion={reducedMotion} />)}
     <Sign title="노천탕" subtitle="바깥 탕" at={[ONSEN.x + 2.6, 2.5, ONSEN.entry[1] - .4]} yaw={faceYaw(fx, fz, ONSEN.x + 2.6, ONSEN.entry[1] - .4)} near={16} hideClose={5} />
     <Sign title="노천탕으로 가는 길" subtitle="마당에서 이어지는 산책" at={signOnPath} yaw={-Math.PI / 2} near={26} hideClose={4.5} />
-    <HorongPole at={along(.28, 1)} lit={lanternLit} phase={.6} reducedMotion={reducedMotion} />
-    <HorongPole at={along(.55, -1)} lit={lanternLit} phase={1.2} reducedMotion={reducedMotion} />
-    <HorongPole at={along(.82, 1)} lit={lanternLit} phase={1.8} reducedMotion={reducedMotion} />
+    <HorongPole at={along(.28, 1)} lit={lanternLit} phase={.6} reducedMotion={reducedMotion} highQuality={highQuality} street />
+    <HorongPole at={along(.55, -1)} lit={lanternLit} phase={1.2} reducedMotion={reducedMotion} highQuality={highQuality} street />
+    <HorongPole at={along(.82, 1)} lit={lanternLit} phase={1.8} reducedMotion={reducedMotion} highQuality={highQuality} street />
+    <pointLight position={[ONSEN.x, 3.2, ONSEN.z + .4]} color="#ffd6a0" intensity={7 * lanternLit} distance={16} decay={1.5} />
   </group>;
 }
 function Birds({ reducedMotion, highQuality }: { reducedMotion: boolean; highQuality: boolean }) {
@@ -1228,7 +1266,7 @@ export const World = memo(function World({ reducedMotion, highQuality, day }: { 
     <Birds reducedMotion={reducedMotion} highQuality={highQuality} />
     {(['yoga', 'spa', 'floating', 'tea'] as const).map(id => <Pavilion key={id} id={id} lit={lanternLit} reducedMotion={reducedMotion} />)}
     <CampfireYard reducedMotion={reducedMotion} highQuality={highQuality} />
-    <OnsenYard reducedMotion={reducedMotion} lanternLit={lanternLit} />
+    <OnsenYard reducedMotion={reducedMotion} lanternLit={lanternLit} highQuality={highQuality} />
     <ShopStall lanternLit={lanternLit} highQuality={highQuality} />
     <Furnishings reducedMotion={reducedMotion} highQuality={highQuality} lanternLit={lanternLit} />
     <SaunaCabin reducedMotion={reducedMotion} />
