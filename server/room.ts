@@ -1,26 +1,36 @@
 import { randomUUID } from 'node:crypto';
 import { SLOTS, ZONES, YOGA_INTERACTION_RADIUS, nearbyYogaMat, zoneAt, isTea, SPEED, type Appearance, type ClientMessage, type Player, type Snapshot, type ZoneId } from '../shared/world.js';
+import { CHAT_COOLDOWN_MS, CHAT_HISTORY, sanitizeChat, type ChatMessage } from '../shared/chat.js';
 import { SPA_BATHS, SAUNA, bathAt } from '../shared/spa.js';
 import { ONSEN, onsenAt, onsenPathWaypoints, onsenPathYaw } from '../shared/onsen.js';
 import { movementYaw, stepLocomotion } from '../shared/locomotion.js';
 
 type Guide = { points: [number, number][]; i: number };
-type Session = { player: Player; token: string; dx: number; dz: number; inputAt: number; disconnectedAt: number | null; send: ((data: object) => void) | null; guide: Guide | null };
+type Session = { player: Player; token: string; dx: number; dz: number; inputAt: number; disconnectedAt: number | null; send: ((data: object) => void) | null; guide: Guide | null; lastChatAt: number };
 export class Room {
   sessions = new Map<string, Session>();
   occupancy: Record<string, string> = {};
+  chat: ChatMessage[] = [];
   yogaStartedAt: number;
   saunaSteamStartedAt = 0;
   worryBurnSeq = 0;
   constructor(public capacity = 12, public graceMs = 15000, now = Date.now()) { this.yogaStartedAt = now; }
+  chatMessages() { return this.chat.slice(); }
+  pushChat(message: ChatMessage) {
+    this.chat.push(message);
+    if (this.chat.length > CHAT_HISTORY) this.chat.splice(0, this.chat.length - CHAT_HISTORY);
+  }
+  pushSystem(text: string, now = Date.now()) {
+    this.pushChat({ id: randomUUID(), at: now, playerId: '', from: 'REVERN', text, kind: 'system' });
+  }
   join(message: Extract<ClientMessage, { type: 'join' }>, send: (data: object) => void, now = Date.now()) {
     this.expire(now);
     if (message.token) {
       const session = [...this.sessions.values()].find(s => s.token === message.token);
       if (session) {
         if (session.player.connected) throw new Error('이 세션은 다른 연결에서 사용 중입니다.');
-        session.send = send; session.player.connected = true; session.disconnectedAt = null; session.guide = null;
-        return session;
+        session.send = send; session.player.connected = true; session.disconnectedAt = null; session.guide = null; session.lastChatAt ??= 0;
+        return { session, rejoined: true as const };
       }
     }
     if (this.sessions.size >= this.capacity) throw new Error('현재 공간이 가득 찼어요. 잠시 후 다시 들어와 주세요.');
@@ -29,9 +39,10 @@ export class Room {
     const a = message.appearance;
     if (!a || !['skin', 'hair', 'outfit'].every(k => Number.isInteger(a[k as keyof Appearance]) && a[k as keyof Appearance] >= 0 && a[k as keyof Appearance] < (k === 'outfit' ? 4 : 3))) throw new Error('캐릭터 선택을 확인해 주세요.');
     const player: Player = { id: randomUUID(), nickname, appearance: { skin: a.skin, hair: a.hair, outfit: a.outfit }, x: ZONES.courtyard.spawn[0], z: ZONES.courtyard.spawn[1], yaw: ZONES.courtyard.yaw, zone: 'courtyard', activity: 'idle', towel: false, connected: true, slot: null, actionUntil: 0, drink: null, marshmallow: 'none' };
-    const session: Session = { player, token: randomUUID(), dx: 0, dz: 0, inputAt: now, disconnectedAt: null, send, guide: null };
+    const session: Session = { player, token: randomUUID(), dx: 0, dz: 0, inputAt: now, disconnectedAt: null, send, guide: null, lastChatAt: 0 };
     this.sessions.set(player.id, session);
-    return session;
+    this.pushSystem(`${nickname}님이 들어왔어요.`, now);
+    return { session, rejoined: false as const };
   }
   error(s: Session, message: string) { s.send?.({ type: 'error', message }); }
   release(s: Session) {
@@ -151,7 +162,18 @@ export class Room {
         this.worryBurnSeq += 1;
         break;
       }
-      case 'leave': this.remove(id); break;
+      case 'chat': {
+        const text = sanitizeChat(data.text);
+        if (!text) return this.error(s, '메시지를 입력해 주세요.');
+        if (now - s.lastChatAt < CHAT_COOLDOWN_MS) return this.error(s, '잠시 뒤에 다시 보내 주세요.');
+        s.lastChatAt = now;
+        this.pushChat({ id: randomUUID(), at: now, playerId: p.id, from: p.nickname, text, kind: 'user' });
+        break;
+      }
+      case 'leave':
+        this.pushSystem(`${p.nickname}님이 자리를 떠났어요.`, now);
+        this.remove(id);
+        break;
     }
   }
   disconnect(id: string, now = Date.now()) {

@@ -45,15 +45,24 @@ export function createSpaceServer(options: { capacity?: number; graceMs?: number
         if (!data || typeof data !== 'object' || typeof data.type !== 'string') throw new Error('올바르지 않은 메시지입니다.');
         if (!id) {
           if (data.type !== 'join') throw new Error('먼저 입장해 주세요.');
-          const session = room.join(data, send); id = session.player.id; clearTimeout(timeout);
-          send({ type: 'welcome', id, token: session.token }); broadcast();
-        } else { room.handle(id, data); if (data.type === 'leave') ws.close(1000); if (data.type !== 'move') broadcast(); }
+          const { session, rejoined } = room.join(data, send); id = session.player.id; clearTimeout(timeout);
+          send({ type: 'welcome', id, token: session.token });
+          send({ type: 'chat', messages: room.chatMessages() });
+          broadcast();
+          if (!rejoined) broadcastChat();
+        } else {
+          room.handle(id, data);
+          if (data.type === 'leave') { broadcastChat(); broadcast(); ws.close(1000); }
+          else if (data.type === 'chat') broadcastChat();
+          else if (data.type !== 'move') broadcast();
+        }
       } catch (error) { send({ type: 'error', message: error instanceof Error ? error.message : '요청을 처리할 수 없습니다.' }); }
     });
     ws.on('error', () => ws.terminate());
     ws.on('close', () => { clearTimeout(timeout); if (id) { room.disconnect(id); broadcast(); } });
   });
   function broadcast() { const message = JSON.stringify(room.snapshot()); for (const ws of wss.clients) if (ws.readyState === WebSocket.OPEN && ws.bufferedAmount < 65536) ws.send(message); }
+  function broadcastChat() { const message = JSON.stringify({ type: 'chat', messages: room.chatMessages() }); for (const ws of wss.clients) if (ws.readyState === WebSocket.OPEN && ws.bufferedAmount < 65536) ws.send(message); }
   let last = Date.now(); let frame = 0;
   const tick = setInterval(() => { const now = Date.now(); room.tick((now - last) / 1000, now); last = now; if (++frame % 2 === 0) broadcast(); }, 1000 / 30);
   const heartbeat = setInterval(() => { for (const ws of wss.clients) { if (!alive.get(ws)) { ws.terminate(); continue; } alive.set(ws, false); ws.ping(); } }, 5000);

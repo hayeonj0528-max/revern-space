@@ -85,6 +85,7 @@ export type ClientMessage =
   | { type: 'roast' }
   | { type: 'eat-marshmallow' }
   | { type: 'burn-worry' }
+  | { type: 'chat'; text: string }
   | { type: 'leave' };
 
 export const SKINS = ['#e9be9c', '#bc8665', '#81523e'];

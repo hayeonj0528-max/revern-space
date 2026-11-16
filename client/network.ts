@@ -1,9 +1,10 @@
 import { useSyncExternalStore } from 'react';
+import type { ChatMessage } from '../shared/chat';
 import type { Appearance, ClientMessage, Snapshot } from '../shared/world';
 
 type Connection = 'idle' | 'connecting' | 'connected' | 'reconnecting' | 'error';
-type State = { snapshot: Snapshot | null; id: string | null; connection: Connection; error: string; clockOffset: number };
-let state: State = { snapshot: null, id: null, connection: 'idle', error: '', clockOffset: 0 };
+type State = { snapshot: Snapshot | null; id: string | null; connection: Connection; error: string; clockOffset: number; chat: ChatMessage[] };
+let state: State = { snapshot: null, id: null, connection: 'idle', error: '', clockOffset: 0, chat: [] };
 const listeners = new Set<() => void>();
 function update(patch: Partial<State>) { state = { ...state, ...patch }; listeners.forEach(fn => fn()); }
 let socket: WebSocket | null = null;
@@ -33,6 +34,7 @@ export const network = {
       let data: any; try { data = JSON.parse(event.data); } catch { return; }
       if (data.type === 'welcome') { welcomed = true; clearTimeout(timeout); lastMessageAt = Date.now(); token = data.token; retries = 0; update({ id: data.id, connection: 'connected', error: '' }); }
       if (data.type === 'state') { lastMessageAt = Date.now(); update({ snapshot: data, clockOffset: data.now - Date.now() }); }
+      if (data.type === 'chat' && Array.isArray(data.messages)) { lastMessageAt = Date.now(); update({ chat: data.messages }); }
       if (data.type === 'error') { update({ error: data.message }); if (!welcomed) { intentional = true; update({ connection: 'error' }); ws.close(); } }
     });
     ws.addEventListener('close', () => {
@@ -46,7 +48,7 @@ export const network = {
   send(message: ClientMessage) { if (socket?.readyState === WebSocket.OPEN && state.connection === 'connected') socket.send(JSON.stringify(message)); },
   clearError() { update({ error: '' }); },
   retry() { intentional = false; retries = 0; this.connect(); },
-  leave() { intentional = true; ++generation; clearTimeout(retryTimer); this.send({ type: 'leave' }); socket?.close(1000); socket = null; token = null; update({ id: null, snapshot: null, connection: 'idle', error: '' }); }
+  leave() { intentional = true; ++generation; clearTimeout(retryTimer); this.send({ type: 'leave' }); socket?.close(1000); socket = null; token = null; update({ id: null, snapshot: null, connection: 'idle', error: '', chat: [] }); }
 };
 export function useSpace() { return useSyncExternalStore(callback => { listeners.add(callback); return () => listeners.delete(callback); }, () => state); }
 window.addEventListener('pagehide', () => network.leave());

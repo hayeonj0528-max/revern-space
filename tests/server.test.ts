@@ -10,8 +10,8 @@ import { ONSEN, onsenAt } from '../shared/onsen.js';
 import { YOGA_DURATION_SECONDS, YOGA_ROUTINE, YOGA_STEP_SECONDS, yogaFrame } from '../shared/yoga.js';
 
 const appearance = { skin: 0, hair: 0, outfit: 0 };
-function join(room: Room, name = '방문객', errors: object[] = []) { return room.join({ type: 'join', nickname: name, appearance }, e => errors.push(e), 1000); }
-function approachMat(room: Room, session: ReturnType<Room['join']>, index: number) {
+function join(room: Room, name = '방문객', errors: object[] = []) { return room.join({ type: 'join', nickname: name, appearance }, e => errors.push(e), 1000).session; }
+function approachMat(room: Room, session: ReturnType<typeof join>, index: number) {
   room.handle(session.player.id, { type: 'travel', zone: 'yoga' });
   const mat = SLOTS.find(s => s.id === `mat-${index}`)!;
   session.player.x = mat.x + .8; session.player.z = mat.z + .5;
@@ -118,7 +118,7 @@ test('disconnect reserves for 15s, reconnect preserves identity, expiry releases
   room.handle(id, { type: 'travel', zone: 'floating' }); room.handle(id, { type: 'reserve', slot: 'tube-0' });
   room.disconnect(id, 2000); assert.equal(room.snapshot().count, 0);
   room.expire(16000); assert.equal(room.occupancy['tube-0'], id);
-  const again = room.join({ type: 'join', nickname: '가', appearance, token: a.token }, () => {}, 16001);
+  const again = room.join({ type: 'join', nickname: '가', appearance, token: a.token }, () => {}, 16001).session;
   assert.equal(again.player.id, id); assert.equal(again.player.activity, 'lying');
   room.disconnect(id, 17000); room.expire(32000); assert.equal(room.sessions.size, 0); assert.equal(room.occupancy['tube-0'], undefined);
 });
@@ -246,6 +246,19 @@ test('onsen bath entry, depth and exit work like the spa baths', () => {
   assert.equal(p.activity, 'bathing'); assert.ok(onsenAt(p.x, p.z)); assert.ok(groundHeightAt(p.x, p.z) < 0);
   room.handle(p.id, { type: 'exit-bath' });
   assert.deepEqual([p.x, p.z], ONSEN.entry); assert.equal(p.activity, 'idle'); assert.equal(groundHeightAt(p.x, p.z), 0);
+});
+test('chat messages are sanitized, rate-limited and shared in history', () => {
+  const room = new Room(), a = join(room, '하나'), b = join(room, '두리');
+  assert.ok(room.chatMessages().some(m => m.kind === 'system' && m.text.includes('들어왔어요')));
+  room.handle(a.player.id, { type: 'chat', text: '  안녕하세요!  ' }, 2000);
+  assert.equal(room.chatMessages().at(-1)?.text, '안녕하세요!');
+  assert.equal(room.chatMessages().at(-1)?.from, '하나');
+  room.handle(a.player.id, { type: 'chat', text: '또 인사' }, 2500);
+  assert.notEqual(room.chatMessages().at(-1)?.text, '또 인사');
+  room.handle(b.player.id, { type: 'chat', text: '반갑습니다', }, 4000);
+  assert.equal(room.chatMessages().at(-1)?.from, '두리');
+  room.handle(a.player.id, { type: 'chat', text: 'x'.repeat(200) }, 5000);
+  assert.ok((room.chatMessages().at(-1)?.text.length ?? 0) <= 80);
 });
 test('enter-onsen-path walks the bamboo path then enters the bath', () => {
   const room = new Room(), a = join(room), p = a.player;
