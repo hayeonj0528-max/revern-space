@@ -1292,6 +1292,12 @@ export const World = memo(function World({ reducedMotion, highQuality, day }: { 
     )}
     {/* Floating hall approach — one street 호롱 on the south path. */}
     <HorongPole at={[2.4, 0, -22]} lit={lanternLit} phase={4.8} reducedMotion={reducedMotion} highQuality={highQuality} street />
+    {/* Tea approach — both flanks only; keep the center gate/door path clear. */}
+    {([-1, 1] as const).flatMap((side, si) => ([[4.8, 19], [5.2, 22]] as const).map(([x, z], i) =>
+      <HorongPole key={`tea-lamp-${side}-${z}`} at={[side * x, 0, z]} lit={lanternLit} phase={5.2 + si + i} reducedMotion={reducedMotion} highQuality={highQuality} street />
+    ))}
+    <pointLight position={[-5.5, 2.8, 20.5]} color="#ffd6a0" intensity={4.5 * lanternLit} distance={11} decay={1.55} />
+    <pointLight position={[5.5, 2.8, 20.5]} color="#ffd6a0" intensity={4.5 * lanternLit} distance={11} decay={1.55} />
     <Sign title="REVERN" subtitle="잠시, 나에게 돌아오는 시간" at={[9, 1.7, 21]} yaw={-.35} />
     <Box at={[9, .7, 21]} size={[.12, 1.4, .12]} material={materials.wood} />
     {[-1, 1].map(side => <group key={side}>
