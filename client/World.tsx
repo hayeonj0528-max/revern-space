@@ -1010,14 +1010,12 @@ function OnsenYard({ reducedMotion, lanternLit }: { reducedMotion: boolean; lant
     <Box at={[ONSEN.x, -.48, ONSEN.z + ONSEN.d / 2]} size={[ONSEN.w + .15, .28, .36]} material={materials.stone} />
     {[-1, 1].map(side => <Box key={`lip-s-${side}`} at={[ONSEN.x + side * (2.1 + (ONSEN.w - 4.2) / 4), -.48, ONSEN.z - ONSEN.d / 2]} size={[(ONSEN.w - 4.2) / 2, .28, .36]} material={materials.stone} />)}
     {[0, 1, 2, 3].map(i => <Box key={i} at={[ONSEN.x, -.15 - i * .18, ONSEN.z - ONSEN.d / 2 + .3 + i * .35]} size={[3.4, .18, .4]} material={materials.stone} />)}
-    {/* Tall screens moved off the bath — sit on the left/right edges, wrapped by bamboo. */}
+    {/* Side screens only — no wall cutting across the bath. */}
     {[-1, 1].map(side => <group key={`side-screen-${side}`}>
       <Box at={[ONSEN.x + side * 7.15, .85, ONSEN.z + .6]} size={[.42, 2.1, 8.8]} material={materials.stone} />
       <Box at={[ONSEN.x + side * 7.15, 1.95, ONSEN.z + .6]} size={[.55, .14, 9]} material={materials.wood} />
       <Box at={[ONSEN.x + side * 7.15, .2, ONSEN.z + .6]} size={[.7, .28, 9.1]} material={materials.stone} />
     </group>)}
-    <Box at={[ONSEN.x, .85, ONSEN.z + 6.9]} size={[9.6, 2.1, .42]} material={materials.stone} />
-    <Box at={[ONSEN.x, 1.95, ONSEN.z + 6.9]} size={[9.9, .14, .55]} material={materials.wood} />
     {[-2, 0, 2].map(dx => <Steam key={dx} x={ONSEN.x + dx} z={ONSEN.z} reducedMotion={reducedMotion} />)}
     <Sign title="노천탕" subtitle="바깥 탕" at={[ONSEN.x + 2.6, 2.5, ONSEN.entry[1] - .4]} yaw={faceYaw(fx, fz, ONSEN.x + 2.6, ONSEN.entry[1] - .4)} near={16} hideClose={5} />
     <Sign title="노천탕으로 가는 길" subtitle="마당에서 이어지는 산책" at={signOnPath} yaw={-Math.PI / 2} near={26} hideClose={4.5} />

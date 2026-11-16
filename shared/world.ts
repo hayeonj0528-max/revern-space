@@ -209,9 +209,8 @@ for (const side of [-1, 1]) { COLLIDERS.push({ x: side * 5.5, z: 26, w: .5, d: .
   const stairW = 4.2;
   const side = (ONSEN.w - stairW) / 2;
   for (const sign of [-1, 1]) COLLIDERS.push({ x: ONSEN.x + sign * (stairW / 2 + side / 2), z: ONSEN.z - ONSEN.d / 2, w: side, d: .3, height: .22 });
-  // Relocated side screens + north screen outside the water.
+  // Side screens only — nothing spanning across the bath.
   for (const sign of [-1, 1]) COLLIDERS.push({ x: ONSEN.x + sign * 7.15, z: ONSEN.z + .6, w: .5, d: 8.8, height: 2.1 });
-  COLLIDERS.push({ x: ONSEN.x, z: ONSEN.z + 6.9, w: 9.6, d: .5, height: 2.1 });
 }
 
 // Courtyard snack stall — south of onsen approach (yaw 0 → counter along X)
